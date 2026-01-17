@@ -1,43 +1,39 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import HowItWorksModal from './HowItWorksModal';
-import MouseTrail from '../components/MouseTrail';
-import DrawingToolbar from '../components/DrawingToolbar';
+import { useState } from "react";
+import HowItWorksModal from "./HowItWorksModal";
+import MouseTrail from "../components/MouseTrail";
+import DrawingToolbar from "../components/DrawingToolbar";
 
 export default function Landing() {
-  const [mode, setMode] = useState<'join' | 'create'>('join');
-  const [roomCode, setRoomCode] = useState('');
-  const [username, setUsername] = useState('');
+  const [mode, setMode] = useState<"join" | "create">("join");
+  const [roomCode, setRoomCode] = useState("");
+  const [username, setUsername] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [showModal, setShowModal] = useState(false);
-  const [drawingColor, setDrawingColor] = useState(
-    'rgba(100, 180, 255, 0.35)'
-  );
+  const [drawingColor, setDrawingColor] = useState("rgba(100, 180, 255, 0.35)");
 
   const handleSubmit = () => {
-    if (mode === 'join' && (!roomCode.trim() || !username.trim())) return;
-    if (mode === 'create' && !username.trim()) return;
+    if (mode === "join" && (!roomCode.trim() || !username.trim())) return;
+    if (mode === "create" && !username.trim()) return;
 
     setIsLoading(true);
 
     console.log(
-      mode === 'join'
+      mode === "join"
         ? `Joining room: ${roomCode} as ${username}`
-        : `Creating room as ${username}`
+        : `Creating room as ${username}`,
     );
   };
 
   const isFormValid =
-    mode === 'join'
-      ? roomCode.trim() && username.trim()
-      : username.trim();
+    mode === "join" ? roomCode.trim() && username.trim() : username.trim();
 
   const handleClearCanvas = () => {
-    const canvas = document.querySelector('canvas') as HTMLCanvasElement;
+    const canvas = document.querySelector("canvas") as HTMLCanvasElement;
     if (!canvas) return;
 
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext("2d");
     if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
   };
 
@@ -48,37 +44,37 @@ export default function Landing() {
         backgroundImage: `
           radial-gradient(circle, rgba(150, 150, 150, 0.15) 1.5px, transparent 1.5px)
         `,
-        backgroundSize: '40px 40px',
+        backgroundSize: "40px 40px",
       }}
     >
+      <div className="absolute top-4 left-4 flex items-center gap-2 bg-background/70 px-3 py-1 rounded-md text-xs text-primary shadow-md z-20">
+        <span className="text-yellow-400">★</span>
+        <span className="text-[rgba(255,255,255,0.4)]">
+          Hold left click to draw
+        </span>
+      </div>
+
       <MouseTrail color={drawingColor} />
 
       <DrawingToolbar
         selectedColor={drawingColor}
         setSelectedColor={setDrawingColor}
-        onEraser={() => setDrawingColor('eraser')}
+        onEraser={() => setDrawingColor("eraser")}
         onClear={handleClearCanvas}
       />
 
-      <HowItWorksModal
-        isOpen={showModal}
-        onClose={() => setShowModal(false)}
-      />
+      <HowItWorksModal isOpen={showModal} onClose={() => setShowModal(false)} />
 
       <div className="w-full max-w-md relative z-10">
         <div className="mb-12 text-center">
-          <h1 className="text-8xl font-bold text-primary mb-2">
-            Boardcast
-          </h1>
-          <p className="text-secondary">
-            Stream your whiteboard in real time
-          </p>
+          <h1 className="text-8xl font-bold text-primary mb-2">Boardcast</h1>
+          <p className="text-secondary">Stream your whiteboard in real time</p>
         </div>
 
         <div className="space-y-6 mb-8">
           <button
             onClick={() => setShowModal(true)}
-            className="w-full py-3 px-4 rounded-md font-medium text-sm bg-hover text-secondary hover:opacity-80 transition-all"
+            className="w-full py-3 px-4 rounded-md font-medium text-sm bg-hover text-secondary hover:opacity-80 transition-all cursor-pointer"
           >
             Learn how it works
           </button>
@@ -93,22 +89,22 @@ export default function Landing() {
         <div className="bg-page rounded-xl border border-selected p-8">
           <div className="flex gap-2 mb-8">
             <button
-              onClick={() => setMode('join')}
-              className={`flex-1 py-2 px-4 rounded-lg font-semibold transition-all text-sm ${
-                mode === 'join'
-                  ? 'bg-selected text-primary border border-primary'
-                  : 'bg-background text-secondary border border-selected hover:border-primary'
+              onClick={() => setMode("join")}
+              className={`flex-1 py-2 px-4 rounded-lg font-semibold transition-all text-sm cursor-pointer ${
+                mode === "join"
+                  ? "bg-selected text-primary border border-primary"
+                  : "bg-background text-secondary border border-selected hover:border-primary"
               }`}
             >
               Join
             </button>
 
             <button
-              onClick={() => setMode('create')}
-              className={`flex-1 py-2 px-4 rounded-lg font-semibold transition-all text-sm ${
-                mode === 'create'
-                  ? 'bg-selected text-primary border border-primary'
-                  : 'bg-background text-secondary border border-selected hover:border-primary'
+              onClick={() => setMode("create")}
+              className={`flex-1 py-2 px-4 rounded-lg font-semibold transition-all text-sm cursor-pointer ${
+                mode === "create"
+                  ? "bg-selected text-primary border border-primary"
+                  : "bg-background text-secondary border border-selected hover:border-primary"
               }`}
             >
               Start
@@ -125,12 +121,12 @@ export default function Landing() {
                 placeholder="Your name"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && handleSubmit()}
+                onKeyPress={(e) => e.key === "Enter" && handleSubmit()}
                 className="w-full px-4 py-3 border border-selected rounded-lg bg-background text-primary placeholder-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition"
               />
             </div>
 
-            {mode === 'join' && (
+            {mode === "join" && (
               <div>
                 <label className="block text-xs font-semibold text-muted uppercase tracking-wide mb-2">
                   Session Code
@@ -139,12 +135,8 @@ export default function Landing() {
                   type="text"
                   placeholder="ABC123"
                   value={roomCode}
-                  onChange={(e) =>
-                    setRoomCode(e.target.value.toUpperCase())
-                  }
-                  onKeyPress={(e) =>
-                    e.key === 'Enter' && handleSubmit()
-                  }
+                  onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
+                  onKeyPress={(e) => e.key === "Enter" && handleSubmit()}
                   className="w-full px-4 py-3 border border-selected rounded-lg bg-background text-primary placeholder-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition uppercase tracking-widest text-center font-mono text-lg"
                 />
               </div>
@@ -154,20 +146,20 @@ export default function Landing() {
           <button
             onClick={handleSubmit}
             disabled={!isFormValid || isLoading}
-            className={`w-full py-3 px-4 rounded-lg font-semibold transition-all ${
+            className={`w-full py-3 px-4 rounded-lg font-semibold transition-all cursor-pointer ${
               isFormValid && !isLoading
-                ? 'bg-primary text-background hover:opacity-80'
-                : 'bg-selected text-muted cursor-not-allowed'
+                ? "bg-primary text-background hover:opacity-80"
+                : "bg-selected text-muted cursor-not-allowed"
             }`}
           >
             {isLoading
-              ? 'Connecting...'
-              : mode === 'join'
-              ? 'Join'
-              : 'Start Boardcast'}
+              ? "Connecting..."
+              : mode === "join"
+                ? "Join"
+                : "Start Boardcast"}
           </button>
 
-          {mode === 'create' && (
+          {mode === "create" && (
             <p className="text-xs text-muted text-center mt-4">
               Your session code will be generated
             </p>
@@ -176,8 +168,8 @@ export default function Landing() {
 
         <div className="mt-8 text-center">
           <p className="text-xs text-muted leading-relaxed">
-            Transform physical whiteboards into live, collaborative
-            digital pages. Capture, stream, and save in real time.
+            Transform physical whiteboards into live, collaborative digital
+            pages. Capture, stream, and save in real time.
           </p>
         </div>
       </div>
