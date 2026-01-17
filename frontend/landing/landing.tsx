@@ -2,6 +2,8 @@
 
 import { useState } from 'react';
 import HowItWorksModal from './HowItWorksModal';
+import MouseTrail from '../components/MouseTrail';
+import DrawingToolbar from '../components/DrawingToolbar';
 
 export default function Landing() {
   const [mode, setMode] = useState<'join' | 'create'>('join');
@@ -9,6 +11,8 @@ export default function Landing() {
   const [username, setUsername] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showModal, setShowModal] = useState(false);
+  const [drawingColor, setDrawingColor] = useState('rgba(100, 180, 255, 0.35)');
+  const canvasRef = useState<HTMLCanvasElement | null>(null);
 
   const handleSubmit = () => {
     if (mode === 'join' && (!roomCode.trim() || !username.trim())) return;
@@ -26,9 +30,30 @@ export default function Landing() {
     : username.trim();
 
   return (
-    <div className="min-h-screen bg-background text-primary font-sans flex flex-col items-center justify-center px-4">
+    <div 
+      className="min-h-screen bg-background text-primary font-sans flex flex-col items-center justify-center px-4 relative"
+      style={{
+        backgroundImage: `
+          radial-gradient(circle, rgba(150, 150, 150, 0.15) 1.5px, transparent 1.5px)
+        `,
+        backgroundSize: '40px 40px',
+      }}
+    >
+      <MouseTrail color={drawingColor} />
+      <DrawingToolbar 
+        selectedColor={drawingColor}
+        setSelectedColor={setDrawingColor}
+        onEraser={() => setDrawingColor('eraser')}
+        onClear={() => {
+          const canvas = document.querySelector('canvas') as HTMLCanvasElement;
+          if (canvas) {
+            const ctx = canvas.getContext('2d');
+            if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
+          }
+        }}
+      />
       <HowItWorksModal isOpen={showModal} onClose={() => setShowModal(false)} />
-      <div className="w-full max-w-md">
+      <div className="w-full max-w-md relative z-10">
         <div className="mb-12 text-center">
           <h1 className="text-8xl font-bold text-primary mb-2">
             Boardcast
