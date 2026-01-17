@@ -4,26 +4,26 @@ import { useEffect, useRef } from 'react';
 
 interface MouseTrailProps {
   color?: string;
-  onClear?: () => void;
 }
 
-export default function MouseTrail({ color = 'rgba(100, 180, 255, 0.35)', onClear }: MouseTrailProps) {
+export default function MouseTrail({
+  color = 'rgba(100, 180, 255, 0.35)',
+}: MouseTrailProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const contextRef = useRef<CanvasRenderingContext2D | null>(null);
-  const positionRef = useRef({ x: -1, y: -1 });
-  const velocityRef = useRef({ x: 0, y: 0 });
-  const isEraserRef = useRef(false);
-  const colorRef = useRef(color);
+  const ctxRef = useRef<CanvasRenderingContext2D | null>(null);
 
+  const posRef = useRef({ x: -1, y: -1 });
+  const colorRef = useRef(color);
+  const isEraserRef = useRef(false);
+  const isDrawingRef = useRef(false);
+
+  /* -------- color / mode updates -------- */
   useEffect(() => {
     colorRef.current = color;
-    if (color === 'eraser') {
-      isEraserRef.current = true;
-    } else {
-      isEraserRef.current = false;
-    }
+    isEraserRef.current = color === 'eraser';
   }, [color]);
 
+  /* -------- setup -------- */
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -31,102 +31,102 @@ export default function MouseTrail({ color = 'rgba(100, 180, 255, 0.35)', onClea
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
 
-    const context = canvas.getContext('2d');
-    if (!context) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
 
-    context.lineCap = 'round';
-    context.lineJoin = 'round';
-    contextRef.current = context;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctxRef.current = ctx;
 
-    // Draw dotted grid
-    const drawGrid = () => {
-      if (!context) return;
-      const gridSize = 40;
-      const dotRadius = 1.5;
-      
-      context.fillStyle = 'rgba(150, 150, 150, 0.15)';
-      
-      for (let x = 0; x < canvas.width; x += gridSize) {
-        for (let y = 0; y < canvas.height; y += gridSize) {
-          context.beginPath();
-          context.arc(x, y, dotRadius, 0, Math.PI * 2);
-          context.fill();
-        }
-      }
+    drawGrid(ctx, canvas);
+
+    const handleMouseDown = (e: MouseEvent) => {
+      if (e.button !== 0) return; // left click only
+      isDrawingRef.current = true;
+      posRef.current = { x: e.clientX, y: e.clientY };
     };
 
-    drawGrid();
-
-    let animationFrameId: number;
-
-    const handleMouseMove = (event: MouseEvent) => {
-      const { clientX, clientY } = event;
-      const { x, y } = positionRef.current;
-
-      // Initialize position on first move
-      if (x === -1 && y === -1) {
-        positionRef.current = { x: clientX, y: clientY };
-        return;
-      }
-
-      const vx = clientX - x;
-      const vy = clientY - y;
-      const distance = Math.sqrt(vx * vx + vy * vy);
-      
-      velocityRef.current = { x: vx, y: vy };
-
-      if (distance > 2 && contextRef.current) {
-        const speed = Math.min(distance, 15);
-        const lineWidth = Math.max(1, 6 - speed * 0.2);
-        
-        if (isEraserRef.current) {
-          contextRef.current.clearRect(clientX - lineWidth * 3, clientY - lineWidth * 3, lineWidth * 6, lineWidth * 6);
-        } else {
-          contextRef.current.strokeStyle = color;
-          contextRef.current.lineWidth = lineWidth;
-          contextRef.current.lineCap = 'round';
-          contextRef.current.lineJoin = 'round';
-          
-          contextRef.current.beginPath();
-          contextRef.current.moveTo(x, y);
-          contextRef.current.lineTo(clientX, clientY);
-          contextRef.current.stroke();
-        }
-
-        positionRef.current = { x: clientX, y: clientY };
-      }
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isDrawingRef.current) return;
+      drawLine(e.clientX, e.clientY);
     };
 
+    const stopDrawing = () => {
+      isDrawingRef.current = false;
+      posRef.current = { x: -1, y: -1 };
+    };
+
+    window.addEventListener('mousedown', handleMouseDown);
     window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', stopDrawing);
+    window.addEventListener('mouseleave', stopDrawing);
 
-    const handleResize = () => {
-      if (canvas) {
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
-        drawGrid();
-      }
-    };
-
-    window.addEventListener('resize', handleResize);
-
-    const handleMouseLeave = () => {
-      positionRef.current = { x: -1, y: -1 };
-    };
-
-    window.addEventListener('mouseleave', handleMouseLeave);
+    window.addEventListener('resize', () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+      drawGrid(ctx, canvas);
+    });
 
     return () => {
+      window.removeEventListener('mousedown', handleMouseDown);
       window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('resize', handleResize);
-      window.removeEventListener('mouseleave', handleMouseLeave);
+      window.removeEventListener('mouseup', stopDrawing);
+      window.removeEventListener('mouseleave', stopDrawing);
     };
   }, []);
+
+  /* -------- draw logic -------- */
+  const drawLine = (x: number, y: number) => {
+    const ctx = ctxRef.current;
+    if (!ctx) return;
+
+    const { x: px, y: py } = posRef.current;
+    if (px === -1) {
+      posRef.current = { x, y };
+      return;
+    }
+
+    const dx = x - px;
+    const dy = y - py;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist < 0.5) return;
+
+    const width = Math.max(1.5, 6 - dist * 0.2);
+
+    if (isEraserRef.current) {
+      ctx.clearRect(x - width * 3, y - width * 3, width * 6, width * 6);
+    } else {
+      ctx.strokeStyle = colorRef.current;
+      ctx.lineWidth = width;
+
+      ctx.beginPath();
+      ctx.moveTo(px, py);
+      ctx.lineTo(x, y);
+      ctx.stroke();
+    }
+
+    posRef.current = { x, y };
+  };
+
+  /* -------- grid -------- */
+  const drawGrid = (
+    ctx: CanvasRenderingContext2D,
+    canvas: HTMLCanvasElement
+  ) => {
+    ctx.fillStyle = 'rgba(150,150,150,0.15)';
+    for (let x = 0; x < canvas.width; x += 40) {
+      for (let y = 0; y < canvas.height; y += 40) {
+        ctx.beginPath();
+        ctx.arc(x, y, 1.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+  };
 
   return (
     <canvas
       ref={canvasRef}
       className="fixed inset-0 pointer-events-none z-0"
-      style={{ background: 'transparent' }}
     />
   );
 }

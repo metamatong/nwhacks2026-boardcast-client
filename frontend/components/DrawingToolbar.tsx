@@ -59,6 +59,7 @@ export default function DrawingToolbar({
           >
             Eraser
           </button>
+
           <button
             onClick={onClear}
             className="w-full px-3 py-2 rounded-md text-xs font-medium bg-hover text-secondary hover:opacity-80 transition-all"
