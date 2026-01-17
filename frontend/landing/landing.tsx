@@ -1,12 +1,14 @@
 'use client';
 
 import { useState } from 'react';
+import HowItWorksModal from '../components/HowItWorksModal';
 
 export default function Landing() {
   const [mode, setMode] = useState<'join' | 'create'>('join');
   const [roomCode, setRoomCode] = useState('');
   const [username, setUsername] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [showModal, setShowModal] = useState(false);
 
   const handleSubmit = () => {
     if (mode === 'join' && (!roomCode.trim() || !username.trim())) return;
@@ -25,8 +27,9 @@ export default function Landing() {
 
   return (
     <div className="min-h-screen bg-background text-primary font-sans flex flex-col items-center justify-center px-4">
+      <HowItWorksModal isOpen={showModal} onClose={() => setShowModal(false)} />
       <div className="w-full max-w-md">
-        <div className="mb-8 text-center">
+        <div className="mb-12 text-center">
           <h1 className="text-8xl font-bold text-primary mb-2">
             Broadcast
           </h1>
@@ -35,7 +38,21 @@ export default function Landing() {
           </p>
         </div>
 
-        {/* Form Container */}
+        <div className="space-y-6 mb-8">
+          <button
+            onClick={() => setShowModal(true)}
+            className="w-full py-3 px-4 rounded-md font-medium text-sm bg-hover text-secondary hover:opacity-80 transition-all"
+          >
+            Learn how it works
+          </button>
+
+          <div className="flex items-center gap-3">
+            <div className="flex-1 border-t border-selected"></div>
+            <span className="text-xs text-muted">or</span>
+            <div className="flex-1 border-t border-selected"></div>
+          </div>
+        </div>
+
         <div className="bg-page rounded-xl border border-selected p-8">
           <div className="flex gap-2 mb-8">
             <button
