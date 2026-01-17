@@ -2,6 +2,8 @@
 
 import { useState } from 'react';
 import HowItWorksModal from './HowItWorksModal';
+import MouseTrail from '../components/MouseTrail';
+import DrawingToolbar from '../components/DrawingToolbar';
 
 export default function Landing() {
   const [mode, setMode] = useState<'join' | 'create'>('join');
@@ -9,11 +11,16 @@ export default function Landing() {
   const [username, setUsername] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showModal, setShowModal] = useState(false);
+  const [drawingColor, setDrawingColor] = useState(
+    'rgba(100, 180, 255, 0.35)'
+  );
 
   const handleSubmit = () => {
     if (mode === 'join' && (!roomCode.trim() || !username.trim())) return;
     if (mode === 'create' && !username.trim()) return;
+
     setIsLoading(true);
+
     console.log(
       mode === 'join'
         ? `Joining room: ${roomCode} as ${username}`
@@ -21,14 +28,44 @@ export default function Landing() {
     );
   };
 
-  const isFormValid = mode === 'join' 
-    ? roomCode.trim() && username.trim()
-    : username.trim();
+  const isFormValid =
+    mode === 'join'
+      ? roomCode.trim() && username.trim()
+      : username.trim();
+
+  const handleClearCanvas = () => {
+    const canvas = document.querySelector('canvas') as HTMLCanvasElement;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
+  };
 
   return (
-    <div className="min-h-screen bg-background text-primary font-sans flex flex-col items-center justify-center px-4">
-      <HowItWorksModal isOpen={showModal} onClose={() => setShowModal(false)} />
-      <div className="w-full max-w-md">
+    <div
+      className="min-h-screen bg-background text-primary font-sans flex flex-col items-center justify-center px-4 relative"
+      style={{
+        backgroundImage: `
+          radial-gradient(circle, rgba(150, 150, 150, 0.15) 1.5px, transparent 1.5px)
+        `,
+        backgroundSize: '40px 40px',
+      }}
+    >
+      <MouseTrail color={drawingColor} />
+
+      <DrawingToolbar
+        selectedColor={drawingColor}
+        setSelectedColor={setDrawingColor}
+        onEraser={() => setDrawingColor('eraser')}
+        onClear={handleClearCanvas}
+      />
+
+      <HowItWorksModal
+        isOpen={showModal}
+        onClose={() => setShowModal(false)}
+      />
+
+      <div className="w-full max-w-md relative z-10">
         <div className="mb-12 text-center">
           <h1 className="text-8xl font-bold text-primary mb-2">
             Boardcast
@@ -47,9 +84,9 @@ export default function Landing() {
           </button>
 
           <div className="flex items-center gap-3">
-            <div className="flex-1 border-t border-selected"></div>
+            <div className="flex-1 border-t border-selected" />
             <span className="text-xs text-muted">or</span>
-            <div className="flex-1 border-t border-selected"></div>
+            <div className="flex-1 border-t border-selected" />
           </div>
         </div>
 
@@ -65,6 +102,7 @@ export default function Landing() {
             >
               Join
             </button>
+
             <button
               onClick={() => setMode('create')}
               className={`flex-1 py-2 px-4 rounded-lg font-semibold transition-all text-sm ${
@@ -101,8 +139,12 @@ export default function Landing() {
                   type="text"
                   placeholder="ABC123"
                   value={roomCode}
-                  onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
-                  onKeyPress={(e) => e.key === 'Enter' && handleSubmit()}
+                  onChange={(e) =>
+                    setRoomCode(e.target.value.toUpperCase())
+                  }
+                  onKeyPress={(e) =>
+                    e.key === 'Enter' && handleSubmit()
+                  }
                   className="w-full px-4 py-3 border border-selected rounded-lg bg-background text-primary placeholder-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition uppercase tracking-widest text-center font-mono text-lg"
                 />
               </div>
@@ -114,16 +156,15 @@ export default function Landing() {
             disabled={!isFormValid || isLoading}
             className={`w-full py-3 px-4 rounded-lg font-semibold transition-all ${
               isFormValid && !isLoading
-                ? 'bg-primary text-background hover:opacity-80 cursor-pointer'
+                ? 'bg-primary text-background hover:opacity-80'
                 : 'bg-selected text-muted cursor-not-allowed'
             }`}
           >
-            {isLoading 
-              ? 'Connecting...' 
-              : mode === 'join' 
-                ? 'Join' 
-                : 'Start Boardcast'
-            }
+            {isLoading
+              ? 'Connecting...'
+              : mode === 'join'
+              ? 'Join'
+              : 'Start Boardcast'}
           </button>
 
           {mode === 'create' && (
@@ -135,7 +176,8 @@ export default function Landing() {
 
         <div className="mt-8 text-center">
           <p className="text-xs text-muted leading-relaxed">
-            Transform physical whiteboards into live, collaborative digital pages. Capture, stream, and save in real time.
+            Transform physical whiteboards into live, collaborative
+            digital pages. Capture, stream, and save in real time.
           </p>
         </div>
       </div>

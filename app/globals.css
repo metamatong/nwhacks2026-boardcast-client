@@ -1,5 +1,16 @@
 @import "tailwindcss";
 
+body {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+input,
+textarea {
+  user-select: text;
+  -webkit-user-select: text;
+}
+
 /* =========================
    Base Design Tokens
    ========================= */
