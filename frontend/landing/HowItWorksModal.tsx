@@ -12,7 +12,7 @@ export default function HowItWorksModal({ isOpen, onClose }: HowItWorksModalProp
     <div className="fixed inset-0 bg-black bg-opacity-20 flex items-center justify-center px-4 z-50">
       <div className="bg-page rounded-lg border border-selected max-w-2xl w-full max-h-[80vh] overflow-y-auto">
         <div className="sticky top-0 bg-page border-b border-selected p-6 flex items-center justify-between">
-          <h2 className="text-2xl font-bold text-primary">How Broadcast Works</h2>
+          <h2 className="text-2xl font-bold text-primary">How Boardcast Works</h2>
           <button
             onClick={onClose}
             className="text-muted hover:text-primary transition-colors bg-transparent"
@@ -27,7 +27,7 @@ export default function HowItWorksModal({ isOpen, onClose }: HowItWorksModalProp
           <div>
             <h3 className="text-lg font-semibold text-primary mb-3">For Teachers & Presenters</h3>
             <p className="text-secondary leading-relaxed">
-              Set up a camera pointing at your physical whiteboard. Broadcast automatically captures what you write in real time, cleans it up for clarity, and streams it live to your audience.
+              Set up a camera pointing at your physical whiteboard. Boardcast automatically captures what you write in real time, cleans it up for clarity, and streams it live to your audience.
             </p>
           </div>
 

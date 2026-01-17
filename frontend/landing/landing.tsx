@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import HowItWorksModal from '../components/HowItWorksModal';
+import HowItWorksModal from './HowItWorksModal';
 
 export default function Landing() {
   const [mode, setMode] = useState<'join' | 'create'>('join');
@@ -31,7 +31,7 @@ export default function Landing() {
       <div className="w-full max-w-md">
         <div className="mb-12 text-center">
           <h1 className="text-8xl font-bold text-primary mb-2">
-            Broadcast
+            Boardcast
           </h1>
           <p className="text-secondary">
             Stream your whiteboard in real time
@@ -122,7 +122,7 @@ export default function Landing() {
               ? 'Connecting...' 
               : mode === 'join' 
                 ? 'Join' 
-                : 'Start Broadcast'
+                : 'Start Boardcast'
             }
           </button>
 

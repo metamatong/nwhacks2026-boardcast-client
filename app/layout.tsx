@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Boardcast",
-  description: "Your broadcast platform",
+  description: "Your boardcast platform",
 };
 
 export default function RootLayout({
