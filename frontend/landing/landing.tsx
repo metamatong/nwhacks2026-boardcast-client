@@ -77,7 +77,32 @@ export default function Landing() {
     if (!canvas) return;
 
     const ctx = canvas.getContext("2d");
-    if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
+    if (!ctx) return;
+    
+    // Clear everything
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // Redraw the grid
+    const dotSize = 1.5;
+    const spacing = 40;
+    
+    const patternCanvas = document.createElement("canvas");
+    patternCanvas.width = spacing;
+    patternCanvas.height = spacing;
+    
+    const pctx = patternCanvas.getContext("2d");
+    if (!pctx) return;
+    
+    pctx.fillStyle = "rgba(150,150,150,0.15)";
+    pctx.beginPath();
+    pctx.arc(spacing / 2, spacing / 2, dotSize, 0, Math.PI * 2);
+    pctx.fill();
+    
+    const pattern = ctx.createPattern(patternCanvas, "repeat");
+    if (!pattern) return;
+    
+    ctx.fillStyle = pattern;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
   };
 
   return (
@@ -247,7 +272,7 @@ export default function Landing() {
                   </label>
                   <input
                     type="text"
-                    placeholder="ABC123"
+                    placeholder="ABC 123"
                     value={roomCode}
                     onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
                     onKeyPress={(e) => e.key === "Enter" && handleSubmit()}
