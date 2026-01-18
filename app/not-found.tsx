@@ -16,7 +16,32 @@ export default function NotFound() {
     if (!canvas) return;
 
     const ctx = canvas.getContext("2d");
-    if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
+    if (!ctx) return;
+    
+    // Clear everything
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // Redraw the grid
+    const dotSize = 1.5;
+    const spacing = 40;
+    
+    const patternCanvas = document.createElement("canvas");
+    patternCanvas.width = spacing;
+    patternCanvas.height = spacing;
+    
+    const pctx = patternCanvas.getContext("2d");
+    if (!pctx) return;
+    
+    pctx.fillStyle = "rgba(150,150,150,0.15)";
+    pctx.beginPath();
+    pctx.arc(spacing / 2, spacing / 2, dotSize, 0, Math.PI * 2);
+    pctx.fill();
+    
+    const pattern = ctx.createPattern(patternCanvas, "repeat");
+    if (!pattern) return;
+    
+    ctx.fillStyle = pattern;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
   };
 
   return (
@@ -111,7 +136,7 @@ export default function NotFound() {
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={() => router.push("/")}
-            className="flex items-center gap-2 px-6 py-3 bg-primary text-background rounded-lg font-semibold hover:opacity-90 transition-all cursor-pointer shadow-lg"
+            className="flex items-center gap-2 px-6 py-3 bg-selected text-primary rounded-lg font-semibold hover:bg-hover transition-colors duration-300 cursor-pointer shadow-lg"
           >
             <Home className="w-5 h-5" />
             <span>Go Home</span>
@@ -121,7 +146,7 @@ export default function NotFound() {
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={() => router.back()}
-            className="px-6 py-3 bg-hover text-secondary rounded-lg font-semibold hover:opacity-80 transition-all cursor-pointer border border-selected"
+            className="px-6 py-3 bg-hover text-primary rounded-lg font-semibold hover:bg-selected transition-colors duration-300 cursor-pointer border border-selected"
           >
             Go Back
           </motion.button>

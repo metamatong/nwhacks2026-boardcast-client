@@ -177,43 +177,43 @@ const Header: React.FC<{
                 transition={{ duration: 0.2 }}
                 className="absolute right-0 top-full mt-2 w-64 bg-page border border-selected rounded-xl shadow-2xl overflow-hidden z-50"
               >
-              <div className="px-4 py-3 border-b border-selected bg-background/50 backdrop-blur-sm flex justify-between items-center">
-                <span className="text-xs font-bold text-muted uppercase tracking-wider">
-                  Participants
-                </span>
-                <span className="text-xs bg-selected px-2 py-0.5 rounded-full text-primary font-mono">
-                  {participants.length}
-                </span>
-              </div>
-              <div className="max-h-[300px] overflow-y-auto p-2 space-y-1">
-                {participants.map((participant) => (
-                  <div
-                    key={participant.id}
-                    className="group flex items-center gap-3 p-2 hover:bg-hover rounded-lg transition-colors"
-                  >
+                <div className="px-4 py-3 border-b border-selected bg-background/50 backdrop-blur-sm flex justify-between items-center">
+                  <span className="text-xs font-bold text-muted uppercase tracking-wider">
+                    Participants
+                  </span>
+                  <span className="text-xs bg-selected px-2 py-0.5 rounded-full text-primary font-mono">
+                    {participants.length}
+                  </span>
+                </div>
+                <div className="max-h-[300px] overflow-y-auto p-2 space-y-1">
+                  {participants.map((participant) => (
                     <div
-                      className={`w-8 h-8 rounded-full ${participant.color} flex items-center justify-center text-xs font-bold text-white shadow-sm transition-all`}
+                      key={participant.id}
+                      className="group flex items-center gap-3 p-2 hover:bg-hover rounded-lg transition-colors"
                     >
-                      {participant.name.charAt(0)}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm font-medium text-primary truncate">
-                        {participant.name}
+                      <div
+                        className={`w-8 h-8 rounded-full ${participant.color} flex items-center justify-center text-xs font-bold text-white shadow-sm transition-all`}
+                      >
+                        {participant.name.charAt(0)}
                       </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-medium text-primary truncate">
+                          {participant.name}
+                        </div>
+                      </div>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onKickParticipant(participant.id);
+                        }}
+                        className="bg-transparent! p-1.5 border border-transparent hover:bg-red-500/20 hover:border-red-500 rounded-md transition-all cursor-pointer opacity-0 group-hover:opacity-100 outline-none focus:outline-none focus:ring-0 focus-visible:outline-none"
+                        aria-label={`Kick ${participant.name}`}
+                      >
+                        <Trash2 className="w-4 h-4 text-muted group-hover:text-red-500" />
+                      </button>
                     </div>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onKickParticipant(participant.id);
-                      }}
-                      className="bg-transparent! p-1.5 border border-transparent hover:bg-red-500/20 hover:border-red-500 rounded-md transition-all cursor-pointer opacity-0 group-hover:opacity-100 outline-none focus:outline-none focus:ring-0 focus-visible:outline-none"
-                      aria-label={`Kick ${participant.name}`}
-                    >
-                      <Trash2 className="w-4 h-4 text-muted group-hover:text-red-500" />
-                    </button>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
               </motion.div>
             )}
           </AnimatePresence>
@@ -312,9 +312,9 @@ const Controla: React.FC<{
   disabled?: boolean;
 }> = ({ icon, label, onClick, variant = "secondary", disabled = false }) => {
   const variantClasses = {
-    primary: "bg-primary text-background hover:opacity-80",
-    secondary: "bg-hover text-primary hover:opacity-80 border border-selected",
-    danger: "bg-hover text-primary hover:border-red-500 border border-selected",
+    primary: "bg-selected text-primary hover:bg-hover transition-colors duration-300",
+    secondary: "bg-hover text-primary hover:opacity-80 border border-selected transition-colors duration-300",
+    danger: "bg-hover text-primary hover:border-red-500 border border-selected transition-colors duration-300",
   };
   return (
     <motion.button
@@ -515,7 +515,7 @@ const Sidebar: React.FC<{
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             onClick={onCreateSnippet}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-primary text-background rounded-lg font-semibold hover:opacity-80 transition-all cursor-pointer outline-none focus:outline-none focus:ring-0 focus-visible:outline-none"
+            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-selected text-primary rounded-lg font-semibold hover:bg-hover transition-colors duration-300 cursor-pointer outline-none focus:outline-none focus:ring-0 focus-visible:outline-none"
           >
             <Plus className="w-4 h-4" />
             <span className="text-sm">New Snippet</span>

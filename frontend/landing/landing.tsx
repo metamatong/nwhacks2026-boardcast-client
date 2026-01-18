@@ -78,29 +78,29 @@ export default function Landing() {
 
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
-    
+
     // Clear everything
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    
+
     // Redraw the grid
     const dotSize = 1.5;
     const spacing = 40;
-    
+
     const patternCanvas = document.createElement("canvas");
     patternCanvas.width = spacing;
     patternCanvas.height = spacing;
-    
+
     const pctx = patternCanvas.getContext("2d");
     if (!pctx) return;
-    
+
     pctx.fillStyle = "rgba(150,150,150,0.15)";
     pctx.beginPath();
     pctx.arc(spacing / 2, spacing / 2, dotSize, 0, Math.PI * 2);
     pctx.fill();
-    
+
     const pattern = ctx.createPattern(patternCanvas, "repeat");
     if (!pattern) return;
-    
+
     ctx.fillStyle = pattern;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
   };
@@ -211,7 +211,7 @@ export default function Landing() {
               }}
               transition={{ duration: 0.3 }}
               onClick={() => setMode("join")}
-              className={`flex-1 py-2 px-4 rounded-lg font-semibold transition-all text-sm cursor-pointer ${
+              className={`flex-1 py-2 px-4 rounded-lg font-semibold transition-colors duration-300 text-sm cursor-pointer ${
                 mode === "join"
                   ? "bg-selected text-primary border border-primary"
                   : "bg-background text-secondary border border-selected hover:border-primary"
@@ -232,7 +232,7 @@ export default function Landing() {
               }}
               transition={{ duration: 0.3 }}
               onClick={() => setMode("create")}
-              className={`flex-1 py-2 px-4 rounded-lg font-semibold transition-all text-sm cursor-pointer ${
+              className={`flex-1 py-2 px-4 rounded-lg font-semibold transition-colors duration-300 text-sm cursor-pointer ${
                 mode === "create"
                   ? "bg-selected text-primary border border-primary"
                   : "bg-background text-secondary border border-selected hover:border-primary"
@@ -246,11 +246,11 @@ export default function Landing() {
           <div className="space-y-4 mb-6">
             <div>
               <label className="block text-xs font-semibold text-muted uppercase tracking-wide mb-2">
-                Room Title
+                {mode === "join" ? "Username" : "Room Title"}
               </label>
               <input
                 type="text"
-                placeholder="Room name"
+                placeholder={mode === "join" ? "Your name" : "Room name"}
                 value={roomTitle}
                 onChange={(e) => setRoomTitle(e.target.value)}
                 onKeyPress={(e) => e.key === "Enter" && handleSubmit()}
@@ -261,14 +261,14 @@ export default function Landing() {
             <AnimatePresence mode="wait">
               {mode === "join" && (
                 <motion.div
-                  key="session-code"
+                  key="room-code"
                   initial={{ opacity: 0, height: 0, y: -10 }}
                   animate={{ opacity: 1, height: "auto", y: 0 }}
                   exit={{ opacity: 0, height: 0, y: -10 }}
                   transition={{ duration: 0.3, ease: "easeInOut" }}
                 >
                   <label className="block text-xs font-semibold text-muted uppercase tracking-wide mb-2">
-                    Session Code
+                    Room Code
                   </label>
                   <input
                     type="text"
@@ -294,10 +294,10 @@ export default function Landing() {
             whileTap={{ scale: isFormValid && !isLoading ? 0.98 : 1 }}
             onClick={handleSubmit}
             disabled={!isFormValid || isLoading}
-            className={`w-full py-3 px-4 rounded-lg font-semibold transition-all cursor-pointer relative overflow-hidden ${
+            className={`w-full py-3 px-4 rounded-lg font-semibold transition-colors duration-500 cursor-pointer relative overflow-hidden ${
               isFormValid && !isLoading
-                ? "bg-primary text-background hover:opacity-80"
-                : "bg-selected text-muted cursor-not-allowed"
+                ? "bg-selected text-primary hover:bg-hover"
+                : "bg-hover text-muted cursor-not-allowed"
             }`}
           >
             <AnimatePresence mode="wait">

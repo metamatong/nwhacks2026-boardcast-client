@@ -89,7 +89,7 @@ export default function HowItWorksModal({
                   For Remote Students
                 </h3>
                 <p className="text-secondary leading-relaxed">
-                  Join a session using a session code. See the whiteboard content
+                  Join a session using a room code. See the whiteboard content
                   streamed live to your screen, follow along in real time, and never
                   miss what's being written—even if you're far away or joining late.
                 </p>
@@ -145,7 +145,7 @@ export default function HowItWorksModal({
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={onClose}
-                className="w-full py-3 px-4 rounded-md font-medium text-sm bg-primary text-background hover:opacity-90 transition-all cursor-pointer"
+                className="w-full py-3 px-4 rounded-md font-medium text-sm bg-selected text-primary hover:bg-hover transition-colors duration-300 cursor-pointer"
               >
                 Got it, let's get started
               </motion.button>

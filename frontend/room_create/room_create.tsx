@@ -156,10 +156,10 @@ export default function RoomCreatePage() {
             whileTap={{ scale: !isSubmitting ? 0.98 : 1 }}
             onClick={handleProceed}
             disabled={isSubmitting}
-            className={`w-full py-3 px-4 rounded-lg font-semibold transition-all cursor-pointer ${
+            className={`w-full py-3 px-4 rounded-lg font-semibold transition-colors duration-300 cursor-pointer ${
               !isSubmitting
-                ? "bg-primary text-background hover:opacity-80"
-                : "bg-selected text-muted cursor-not-allowed"
+                ? "bg-selected text-primary hover:bg-hover"
+                : "bg-hover text-muted cursor-not-allowed"
             }`}
           >
             {isSubmitting ? "Proceeding..." : "Proceed to Room"}
