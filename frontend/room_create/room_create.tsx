@@ -85,19 +85,10 @@ export default function RoomCreatePage() {
           transition={{ duration: 0.6, delay: 0.4 }}
           className="bg-page rounded-xl border border-selected p-8 space-y-6"
         >
-          {/* Room Title & ID */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.5, delay: 0.5 }}
-            className="flex flex-col gap-4"
-          >
-            <motion.div
-              initial={{ x: -20, opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
-              transition={{ duration: 0.5, delay: 0.6 }}
-              className="flex-1 text-center"
-            >
+          {/* Room Title & ID - Stacked Layout */}
+          <motion.div className="flex flex-col gap-4">
+            {/* Room Title - Centered */}
+            <motion.div className="text-center">
               <p className="text-xs font-semibold text-muted uppercase tracking-wide mb-1">
                 Room Title
               </p>
@@ -106,24 +97,20 @@ export default function RoomCreatePage() {
               </div>
             </motion.div>
 
-            <motion.div
-              initial={{ x: 20, opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
-              transition={{ duration: 0.5, delay: 0.7 }}
-              className="flex-1 text-center"
-            >
+            {/* Room ID - Centered with integrated copy button */}
+            <motion.div className="text-center">
               <p className="text-xs font-semibold text-muted uppercase tracking-wide mb-1">
                 Room ID
               </p>
-              <div className="flex items-center gap-2">
-                <div className="flex-1 px-4 py-2 border border-selected rounded-lg bg-background text-primary font-mono text-sm select-all">
-                  {id}
+              <div className="relative flex items-center justify-center border border-selected rounded-lg bg-background">
+                <div className="px-4 py-2 text-primary font-mono text-sm select-all">
+                  {id.slice(0, 3) + " " + id.slice(3, 6)}
                 </div>
                 <motion.button
                   whileHover={{ scale: 1.1 }}
                   whileTap={{ scale: 0.9 }}
                   onClick={handleCopyRoomId}
-                  className="p-2 border border-selected rounded-lg bg-background hover:bg-hover transition-colors cursor-pointer"
+                  className="absolute right-2 p-2 rounded-lg hover:bg-hover transition-colors cursor-pointer"
                   aria-label="Copy room ID"
                 >
                   {copied ? (
@@ -147,7 +134,7 @@ export default function RoomCreatePage() {
               "• Keep this tab open while streaming your board.",
               "• Ensure your phone sits securely before starting.",
               "• The whole whiteboard should be captured on camera.",
-              "• Share the room code with others.",
+              "• Share the room code with others to display live notes.",
             ].map((tip, index) => (
               <motion.p
                 key={index}
