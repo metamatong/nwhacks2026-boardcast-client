@@ -67,7 +67,7 @@ export default function NoteOptions() {
       aria-label={label}
       className="flex flex-col items-center gap-2 px-4 py-2 rounded-lg text-sm text-primary hover:text-blue-500 transition-colors cursor-pointer"
     >
-      <div className="relative h-10 w-10 flex items-center justify-center shadow-sm">
+      <div className="relative h-10 w-10 flex items-center justify-center">
         <Icon
           className={`absolute h-6 w-6 transition-opacity duration-300 ${
             clicked === action ? "opacity-0" : "opacity-100"
@@ -80,7 +80,6 @@ export default function NoteOptions() {
         />
       </div>
 
-      {/* Always show the label (no hover-only visibility) */}
       <span className="text-xs text-secondary">{label}</span>
     </button>
   );
