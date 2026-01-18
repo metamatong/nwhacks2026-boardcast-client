@@ -3,14 +3,27 @@
 import { useSearchParams, useRouter } from "next/navigation";
 import { useState } from "react";
 import { motion } from "framer-motion";
+import { Copy, Check } from "lucide-react";
 
 export default function RoomCreatePage() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   const id = searchParams.get("id");
   const title = searchParams.get("title");
+
+  const handleCopyRoomId = async () => {
+    if (!id) return;
+    try {
+      await navigator.clipboard.writeText(id);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (error) {
+      console.error("Failed to copy:", error);
+    }
+  };
 
   if (!id || !title) {
     return (
@@ -72,19 +85,10 @@ export default function RoomCreatePage() {
           transition={{ duration: 0.6, delay: 0.4 }}
           className="bg-page rounded-xl border border-selected p-8 space-y-6"
         >
-          {/* Room Title & ID */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.5, delay: 0.5 }}
-            className="flex flex-col gap-4"
-          >
-            <motion.div
-              initial={{ x: -20, opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
-              transition={{ duration: 0.5, delay: 0.6 }}
-              className="flex-1 text-center"
-            >
+          {/* Room Title & ID - Stacked Layout */}
+          <motion.div className="flex flex-col gap-4">
+            {/* Room Title - Centered */}
+            <motion.div className="text-center">
               <p className="text-xs font-semibold text-muted uppercase tracking-wide mb-1">
                 Room Title
               </p>
@@ -93,17 +97,28 @@ export default function RoomCreatePage() {
               </div>
             </motion.div>
 
-            <motion.div
-              initial={{ x: 20, opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
-              transition={{ duration: 0.5, delay: 0.7 }}
-              className="flex-1 text-center"
-            >
+            {/* Room ID - Centered with integrated copy button */}
+            <motion.div className="text-center">
               <p className="text-xs font-semibold text-muted uppercase tracking-wide mb-1">
                 Room ID
               </p>
-              <div className="px-4 py-2 border border-selected rounded-lg bg-background text-primary font-mono text-sm select-all">
-                {id.slice(0, 3) + " " + id.slice(3, 6)}
+              <div className="relative flex items-center justify-center border border-selected rounded-lg bg-background">
+                <div className="px-4 py-2 text-primary font-mono text-sm select-all">
+                  {id.slice(0, 3) + " " + id.slice(3, 6)}
+                </div>
+                <motion.button
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.9 }}
+                  onClick={handleCopyRoomId}
+                  className="absolute right-2 p-2 rounded-lg hover:bg-hover transition-colors cursor-pointer"
+                  aria-label="Copy room ID"
+                >
+                  {copied ? (
+                    <Check className="w-4 h-4 text-primary" />
+                  ) : (
+                    <Copy className="w-4 h-4 text-secondary" />
+                  )}
+                </motion.button>
               </div>
             </motion.div>
           </motion.div>
