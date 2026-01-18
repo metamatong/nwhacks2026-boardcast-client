@@ -1,46 +1,39 @@
 "use client";
 
+import { useSearchParams, useRouter } from "next/navigation";
 import { useState } from "react";
-import { Copy, Check } from "lucide-react";
 
-export default function CreateRoomPage() {
-  const [title] = useState("My Awesome Room");
-  const [roomCode] = useState(generateRoomCode());
+export default function RoomCreatePage() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [copied, setCopied] = useState(false);
 
-  function generateRoomCode() {
-    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-    let code = "";
-    for (let i = 0; i < 6; i++) {
-      code += chars[Math.floor(Math.random() * chars.length)];
-    }
-    return code;
+  const id = searchParams.get("id");
+  const title = searchParams.get("title");
+
+  if (!id || !title) {
+    return (
+      <div className="min-h-screen flex items-center justify-center text-red-500 font-sans bg-background">
+        <p className="text-lg">Failed to load room. Missing ID or title.</p>
+      </div>
+    );
   }
 
   const handleProceed = () => {
     setIsSubmitting(true);
-    console.log(`Proceeding to stream room "${title}" (${roomCode})`);
-
+    // Here you can navigate to the actual streaming page if different
+    console.log(`Proceeding to stream room "${title}" (${id})`);
     setTimeout(() => {
       setIsSubmitting(false);
       alert(`Streaming room "${title}"!`);
     }, 1000);
   };
 
-  const onCopyCode = () => {
-    navigator.clipboard.writeText(roomCode);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
-  };
-
   return (
     <div
       className="min-h-screen bg-background text-primary font-sans flex flex-col items-center justify-center px-4 relative"
       style={{
-        backgroundImage: `
-          radial-gradient(circle, rgba(150, 150, 150, 0.15) 1.5px, transparent 1.5px)
-        `,
+        backgroundImage: `radial-gradient(circle, rgba(150, 150, 150, 0.15) 1.5px, transparent 1.5px)`,
         backgroundSize: "40px 40px",
       }}
     >
@@ -55,11 +48,11 @@ export default function CreateRoomPage() {
           </p>
         </div>
 
-        {/* Card */}
+        {/* Room Card */}
         <div className="bg-page rounded-xl border border-selected p-8 space-y-6">
-          {/* Room Title & Code */}
-          <div className="flex flex-col sm:flex-row sm:justify-between items-center gap-4">
-            <div className="flex-1 text-center sm:text-left">
+          {/* Room Title & ID */}
+          <div className="flex flex-col gap-4">
+            <div className="flex-1 text-center">
               <p className="text-xs font-semibold text-muted uppercase tracking-wide mb-1">
                 Room Title
               </p>
@@ -68,23 +61,12 @@ export default function CreateRoomPage() {
               </div>
             </div>
 
-            <div className="flex-1 text-center sm:text-right relative">
+            <div className="flex-1 text-center">
               <p className="text-xs font-semibold text-muted uppercase tracking-wide mb-1">
-                Room Code
+                Room ID
               </p>
-              <div className="flex items-center justify-center sm:justify-end gap-2 px-4 py-2 border border-selected rounded-lg bg-background text-primary font-mono text-lg tracking-widest select-all">
-                {roomCode}
-                <button
-                  onClick={onCopyCode}
-                  className="p-2 hover:bg-hover rounded-lg transition-colors cursor-pointer group outline-none focus:outline-none focus:ring-0 focus-visible:outline-none"
-                  aria-label="Copy room code"
-                >
-                  {copied ? (
-                    <Check className="w-4 h-4 text-primary" />
-                  ) : (
-                    <Copy className="w-4 h-4 text-primary group-hover:text-primary transition-colors" />
-                  )}
-                </button>
+              <div className="px-4 py-2 border border-selected rounded-lg bg-background text-primary font-mono text-sm select-all">
+                {id}
               </div>
             </div>
           </div>
@@ -107,11 +89,11 @@ export default function CreateRoomPage() {
                 : "bg-selected text-muted cursor-not-allowed"
             }`}
           >
-            {isSubmitting ? "Proceeding..." : "Proceed to Stream"}
+            {isSubmitting ? "Proceeding..." : "Proceed to Room"}
           </button>
         </div>
 
-        {/* Footer text */}
+        {/* Footer */}
         <div className="mt-3 text-center">
           <p className="text-xs text-muted leading-relaxed">
             Transform physical whiteboards into live, collaborative digital
