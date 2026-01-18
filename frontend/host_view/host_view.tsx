@@ -109,47 +109,6 @@ const HostView: React.FC = () => {
     };
   }, []);
 
-  // Lock screen orientation to landscape when streaming on mobile
-  useEffect(() => {
-    if (stage === "live") {
-      // Try to lock orientation to landscape
-      const lockOrientation = async () => {
-        try {
-          // Check if Screen Orientation API is available
-          // Using type assertion as the lock/unlock methods are not fully typed
-          const orientation = screen.orientation as ScreenOrientation & {
-            lock?: (orientation: string) => Promise<void>;
-            unlock?: () => void;
-          };
-          if (orientation && orientation.lock) {
-            await orientation.lock("landscape");
-            console.log("Screen orientation locked to landscape");
-          }
-        } catch (error) {
-          // Orientation lock may fail on desktop or unsupported browsers
-          console.log("Could not lock orientation:", error);
-        }
-      };
-      lockOrientation();
-
-      // Cleanup: unlock orientation when leaving live stage
-      return () => {
-        try {
-          const orientation = screen.orientation as ScreenOrientation & {
-            lock?: (orientation: string) => Promise<void>;
-            unlock?: () => void;
-          };
-          if (orientation && orientation.unlock) {
-            orientation.unlock();
-            console.log("Screen orientation unlocked");
-          }
-        } catch (error) {
-          console.log("Could not unlock orientation:", error);
-        }
-      };
-    }
-  }, [stage]);
-
   // Stage 1: Request camera permission (idle → ready)
   const requestPermission = useCallback(async () => {
     if (stage !== "idle") return;
