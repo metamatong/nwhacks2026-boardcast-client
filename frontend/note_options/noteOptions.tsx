@@ -20,24 +20,40 @@ export default function NoteOptions() {
     setTimeout(() => setClicked(null), 1500);
   };
 
-  const renderIcon = (action: Action, Icon: any) => (
-    <div className="relative h-8 w-8">
-      <Icon
-        className={`absolute top-0 left-0 h-8 w-8 transition-opacity duration-300 ${
-          clicked === action ? "opacity-0" : "opacity-100"
-        }`}
-      />
-      <CheckCircleIcon
-        className={`absolute top-0 left-0 h-8 w-8 text-white transition-opacity duration-300 ${
-          clicked === action ? "opacity-100" : "opacity-0"
-        }`}
-      />
-    </div>
+  const renderIcon = (action: Action, Icon: any, label: string) => (
+    <button
+      onClick={() => handleClick(action)}
+      title={label}
+      className="flex flex-col items-center gap-2 px-4 py-2 rounded-lg text-sm text-primary hover:text-blue-500 transition-colors cursor-pointer"
+    >
+      <div className="relative h-10 w-10 flex items-center justify-center shadow-sm">
+        <Icon
+          className={`absolute h-6 w-6 transition-opacity duration-300 ${
+            clicked === action ? "opacity-0" : "opacity-100"
+          }`}
+        />
+        <CheckCircleIcon
+          className={`absolute h-6 w-6 text-primary transition-opacity duration-300 ${
+            clicked === action ? "opacity-100" : "opacity-0"
+          }`}
+        />
+      </div>
+      <span className="text-xs text-secondary">{label}</span>
+    </button>
   );
+
+  const helperText =
+    clicked === "download"
+      ? "Your notes will be saved in a high-quality format, ready to review offline."
+      : clicked === "share"
+        ? "Share a link so others can view your notes in real time."
+        : clicked === "pdf"
+          ? "Export a clean, printable PDF version of your notes."
+          : "Your notes are all set choose an option above!";
 
   return (
     <div
-      className="min-h-screen bg-background text-primary font-sans w-full flex flex-col justify-center items-center relative"
+      className="min-h-screen bg-background text-primary font-sans w-full flex flex-col justify-center items-center relative px-4"
       style={{
         backgroundImage: `
           radial-gradient(circle, rgba(150, 150, 150, 0.15) 1.5px, transparent 1.5px)
@@ -45,42 +61,56 @@ export default function NoteOptions() {
         backgroundSize: "40px 40px",
       }}
     >
-      <div className="max-w-md text-center z-10">
-        <h1 className="text-5xl font-bold text-primary mb-2">Notes Saved!</h1>
-        <p className="text-lg text-secondary">
-          Sign in to download, share, or save as PDF
-        </p>
+      <div className="max-w-md w-full z-10">
+        <div className="bg-page rounded-xl border border-selected p-6 shadow-lg text-center">
+          <h1 className="text-4xl md:text-5xl font-bold text-primary mb-2">
+            Notes Saved!
+          </h1>
+          <p className="text-sm md:text-base text-secondary mb-3">
+            Sign in to download, share, or save your notes as a PDF.
+          </p>
 
-        <img
-          src="/digital_board_example.png"
-          alt="Preview"
-          className="max-w-full rounded border-2 mt-5 mb-5"
-        />
+          <div className="text-[11px] text-muted mb-3">
+            Session snapshot captured just now — nothing will be lost.
+          </div>
 
-        <div className="flex flex-row justify-center gap-6">
-          <button
-            onClick={() => handleClick("download")}
-            className="px-8 py-2 flex flex-col items-center text-sm text-primary hover:text-blue-500 rounded-lg"
-            title="Download"
-          >
-            {renderIcon("download", ArrowDownTrayIcon)}
+          <img
+            src="/digital_board_example.png"
+            alt="Preview"
+            className="max-w-full rounded-lg border border-selected mt-2 mb-4"
+          />
+
+          <div className="flex flex-row justify-center gap-6 mb-3">
+            {renderIcon("download", ArrowDownTrayIcon, "Download")}
+            {renderIcon("share", ShareIcon, "Share")}
+            {renderIcon("pdf", BsFiletypePdf, "Save as PDF")}
+          </div>
+
+          <p className="text-xs text-secondary min-h-[2.5rem] flex items-center justify-center text-center px-4">
+            {helperText}
+          </p>
+
+          <button className="mt-2 w-full py-3 px-4 rounded-lg font-semibold bg-primary text-background hover:opacity-85 transition-all cursor-pointer text-sm">
+            Sign in to unlock these options
           </button>
 
-          <button
-            onClick={() => handleClick("share")}
-            className="px-8 py-2 flex flex-col items-center text-sm text-primary hover:text-blue-500 rounded-lg"
-            title="Share"
-          >
-            {renderIcon("share", ShareIcon)}
-          </button>
+          <div className="mt-5 text-left text-xs text-muted space-y-2">
+            <p className="uppercase tracking-wide font-semibold text-[10px] text-muted">
+              What happens when you sign in
+            </p>
+            <ul className="space-y-1 list-disc list-inside">
+              <li>Keep a history of all your whiteboard captures.</li>
+              <li>Download high-quality images and PDFs of your notes.</li>
+              <li>Generate share links to send notes to your team.</li>
+            </ul>
+          </div>
+        </div>
 
-          <button
-            onClick={() => handleClick("pdf")}
-            className="px-8 py-2 flex flex-col items-center text-sm text-primary hover:text-blue-500 rounded-lg"
-            title="Download as PDF"
-          >
-            {renderIcon("pdf", BsFiletypePdf)}
-          </button>
+        <div className="mt-5 text-center">
+          <p className="text-[11px] text-muted leading-relaxed">
+            You can always return to this page from your recent sessions. Your
+            notes stay synced until you clear them.
+          </p>
         </div>
       </div>
     </div>

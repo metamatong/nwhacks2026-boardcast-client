@@ -1,118 +1,204 @@
 "use client";
+import React, { useState } from "react";
 
-import { useState } from "react";
-import {
-  ArrowDownTrayIcon,
-  ShareIcon,
-  CheckCircleIcon,
-} from "@heroicons/react/24/outline";
-import { BsFiletypePdf } from "react-icons/bs";
-
-type Action = "download" | "share" | "pdf" | null;
-
-export default function NoteOptions() {
-  const [clicked, setClicked] = useState<Action>(null);
-
-  const handleClick = (action: Action) => {
-    if (clicked) return;
-
-    setClicked(action);
-    setTimeout(() => setClicked(null), 1500);
-  };
-
-  const renderIcon = (action: Action, Icon: any, label: string) => (
-    <button
-      onClick={() => handleClick(action)}
-      title={label}
-      className="flex flex-col items-center gap-2 px-4 py-2 rounded-lg text-sm text-primary hover:text-blue-500 transition-colors cursor-pointer"
-    >
-      <div className="relative h-10 w-10 flex items-center justify-center shadow-sm">
-        <Icon
-          className={`absolute h-6 w-6 transition-opacity duration-300 ${
-            clicked === action ? "opacity-0" : "opacity-100"
-          }`}
-        />
-        <CheckCircleIcon
-          className={`absolute h-6 w-6 text-primary transition-opacity duration-300 ${
-            clicked === action ? "opacity-100" : "opacity-0"
-          }`}
-        />
-      </div>
-      <span className="text-xs text-secondary">{label}</span>
-    </button>
-  );
-
-  const helperText =
-    clicked === "download"
-      ? "Your notes will be saved in a high-quality format, ready to review offline."
-      : clicked === "share"
-        ? "Share a link so others can view your notes in real time."
-        : clicked === "pdf"
-          ? "Export a clean, printable PDF version of your notes."
-          : "Your notes are all set choose an option above!";
+const Room: React.FC = () => {
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
-    <div
-      className="min-h-screen bg-background text-primary font-sans w-full flex flex-col justify-center items-center relative px-4"
-      style={{
-        backgroundImage: `
-          radial-gradient(circle, rgba(150, 150, 150, 0.15) 1.5px, transparent 1.5px)
-        `,
-        backgroundSize: "40px 40px",
-      }}
-    >
-      <div className="max-w-md w-full z-10">
-        <div className="bg-page rounded-xl border border-selected p-6 shadow-lg text-center">
-          <h1 className="text-4xl md:text-5xl font-bold text-primary mb-2">
-            Notes Saved!
-          </h1>
-          <p className="text-sm md:text-base text-secondary mb-3">
-            Sign in to download, share, or save your notes as a PDF.
-          </p>
+    <div className="h-screen bg-gray-900 text-white overflow-hidden">
+      {/* Main Content Area */}
+      <div
+        className={`h-full flex transition-all duration-300 ${sidebarOpen ? "mr-64 sm:mr-80" : "mr-0"}`}
+      >
+        <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+          {/* Room code at the top */}
+          <div className="bg-page border border-selected border-b p-2 sm:p-4 shrink-0 z-10 relative">
+            <div className="max-w-6xl mx-auto relative flex items-center">
+              {/* Left: Title */}
+              <div className="flex-1">
+                <h1 className="text-lg sm:text-xl font-bold">Untitled</h1>
+              </div>
 
-          <div className="text-[11px] text-muted mb-3">
-            Session snapshot captured just now — nothing will be lost.
+              {/* Center: Room Code */}
+              <div className="absolute left-1/2 transform -translate-x-1/2 flex items-center space-x-2">
+                <span className="text-gray-400 text-xs sm:text-sm">
+                  Room Code:
+                </span>
+                <code className="bg-gray-700 px-2 sm:px-3 py-1 rounded text-blue-400 font-mono text-xs sm:text-sm">
+                  ABC-123-XYZ
+                </code>
+                <a className="text-blue-400 hover:text-white text-xs sm:text-sm cursor-pointer">
+                  Copy
+                </a>
+              </div>
+
+              {/* Right: Participants */}
+              <div className="flex-1 text-right text-xs sm:text-sm text-gray-400">
+                3 participants online
+              </div>
+            </div>
           </div>
 
-          <img
-            src="/digital_board_example.png"
-            alt="Preview"
-            className="max-w-full rounded-lg border border-selected mt-2 mb-4"
-          />
-
-          <div className="flex flex-row justify-center gap-6 mb-3">
-            {renderIcon("download", ArrowDownTrayIcon, "Download")}
-            {renderIcon("share", ShareIcon, "Share")}
-            {renderIcon("pdf", BsFiletypePdf, "Save as PDF")}
+          {/* Screen at the top */}
+          <div className="flex-1 bg-black border-b-2 border-gray-700 flex flex-col p-2 sm:p-4 min-h-0">
+            <div className="text-center h-full flex flex-col justify-center items-center">
+              <div className="w-[90%] h-[90%] min-h-[200px] sm:min-h-[300px] bg-page border border-selected rounded-lg flex items-center justify-center mb-2 sm:mb-4 ">
+                <div className="text-gray-400 text-lg sm:text-xl px-4 text-center">
+                  Whiteboard Screen - Broadcast Content Here
+                </div>
+              </div>
+              <div className="text-xs sm:text-sm text-gray-500 shrink-0">
+                Room Whiteboard
+              </div>
+            </div>
           </div>
 
-          <p className="text-xs text-secondary min-h-[2.5rem] flex items-center justify-center text-center px-4">
-            {helperText}
-          </p>
-
-          <button className="mt-2 w-full py-3 px-4 rounded-lg font-semibold bg-primary text-background hover:opacity-85 transition-all cursor-pointer text-sm">
-            Sign in to unlock these options
-          </button>
-
-          <div className="mt-5 text-left text-xs text-muted space-y-2">
-            <p className="uppercase tracking-wide font-semibold text-[10px] text-muted">
-              What happens when you sign in
-            </p>
-            <ul className="space-y-1 list-disc list-inside">
-              <li>Keep a history of all your whiteboard captures.</li>
-              <li>Download high-quality images and PDFs of your notes.</li>
-              <li>Generate share links to send notes to your team.</li>
-            </ul>
+          {/* Bottom bar */}
+          <div className="bg-page border border-selected border-t p-2 sm:p-4 shrink-0">
+            <div className="max-w-6xl mx-auto">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4">
+                <button className="bg-blue-600 hover:bg-blue-700 text-white px-3 sm:px-4 py-2 rounded-lg text-sm sm:text-base font-medium transition-colors cursor-pointer">
+                  Share Screen
+                </button>
+                <button className="bg-green-600 hover:bg-green-700 text-white px-3 sm:px-4 py-2 rounded-lg text-sm sm:text-base font-medium transition-colors cursor-pointer">
+                  Start Recording
+                </button>
+                <button className="bg-purple-600 hover:bg-purple-700 text-white px-3 sm:px-4 py-2 rounded-lg text-sm sm:text-base font-medium transition-colors cursor-pointer">
+                  Whiteboard Tools
+                </button>
+                <button className="bg-red-600 hover:bg-red-700 text-white px-3 sm:px-4 py-2 rounded-lg text-sm sm:text-base font-medium transition-colors cursor-pointer">
+                  End Session
+                </button>
+              </div>
+            </div>
           </div>
-        </div>
-
-        <div className="mt-5 text-center">
-          <p className="text-[11px] text-muted leading-relaxed">
-            You can always return to this page from your recent sessions. Your
-            notes stay synced until you clear them.
-          </p>
         </div>
       </div>
+
+      {/* Right Sidebar */}
+      <div
+        className={`fixed right-0 top-0 h-full w-64 sm:w-80 bg-page border border-selected shadow-xl border-l transform transition-transform duration-300 ease-in-out z-50 ${
+          sidebarOpen ? "translate-x-0" : "translate-x-full"
+        }`}
+      >
+        <div className="p-4 sm:p-6 h-full flex flex-col">
+          <div className="flex justify-between items-center mb-4 sm:mb-6 shrink-0">
+            <h2 className="text-lg sm:text-xl font-bold">Board Snippets</h2>
+            <a
+              onClick={() => setSidebarOpen(false)}
+              className="cursor-pointer text-gray-400 hover:text-white text-xl sm:text-2xl"
+            >
+              ×
+            </a>
+          </div>
+
+          <div className="flex-1 overflow-auto space-y-2 sm:space-y-3">
+            {/* Whiteboard Snippet 1 */}
+            <div className="bg-gray-700 p-2 sm:p-3 rounded-lg cursor-pointer hover:bg-gray-600 transition-colors">
+              <div className="aspect-video bg-page border border-selected rounded flex items-center justify-center mb-2">
+                <div className="text-gray-400 text-xs text-center px-2">
+                  Diagram 1
+                </div>
+              </div>
+              <div className="text-xs text-gray-300 text-center">
+                Flow Chart
+              </div>
+            </div>
+
+            {/* Whiteboard Snippet 2 */}
+            <div className="bg-gray-700 p-2 sm:p-3 rounded-lg cursor-pointer hover:bg-gray-600 transition-colors">
+              <div className="aspect-video bg-page border border-selected rounded flex items-center justify-center mb-2">
+                <div className="text-gray-400 text-xs text-center px-2">
+                  Notes 2
+                </div>
+              </div>
+              <div className="text-xs text-gray-300 text-center">
+                Meeting Notes
+              </div>
+            </div>
+
+            {/* Whiteboard Snippet 3 */}
+            <div className="bg-gray-700 p-2 sm:p-3 rounded-lg cursor-pointer hover:bg-gray-600 transition-colors">
+              <div className="aspect-video bg-page border border-selected rounded flex items-center justify-center mb-2">
+                <div className="text-gray-400 text-xs text-center px-2">
+                  Wireframe 3
+                </div>
+              </div>
+              <div className="text-xs text-gray-300 text-center">UI Design</div>
+            </div>
+
+            {/* Whiteboard Snippet 4 */}
+            <div className="bg-gray-700 p-2 sm:p-3 rounded-lg cursor-pointer hover:bg-gray-600 transition-colors">
+              <div className="aspect-video bg-page border border-selected rounded flex items-center justify-center mb-2">
+                <div className="text-gray-400 text-xs text-center px-2">
+                  Brainstorm 4
+                </div>
+              </div>
+              <div className="text-xs text-gray-300 text-center">Ideas</div>
+            </div>
+
+            {/* Whiteboard Snippet 5 */}
+            <div className="bg-gray-700 p-2 sm:p-3 rounded-lg cursor-pointer hover:bg-gray-600 transition-colors">
+              <div className="aspect-video bg-page border border-selected rounded flex items-center justify-center mb-2">
+                <div className="text-gray-400 text-xs text-center px-2">
+                  Plan 5
+                </div>
+              </div>
+              <div className="text-xs text-gray-300 text-center">
+                Project Plan
+              </div>
+            </div>
+
+            {/* Whiteboard Snippet 6 */}
+            <div className="bg-gray-700 p-2 sm:p-3 rounded-lg cursor-pointer hover:bg-gray-600 transition-colors">
+              <div className="aspect-video bg-page border border-selected rounded flex items-center justify-center mb-2">
+                <div className="text-gray-400 text-xs text-center px-2">
+                  Code 6
+                </div>
+              </div>
+              <div className="text-xs text-gray-300 text-center">
+                Code Review
+              </div>
+            </div>
+
+            {/* Whiteboard Snippet 7 */}
+            <div className="bg-gray-700 p-2 sm:p-3 rounded-lg cursor-pointer hover:bg-gray-600 transition-colors">
+              <div className="aspect-video bg-page border border-selected rounded flex items-center justify-center mb-2">
+                <div className="text-gray-400 text-xs text-center px-2">
+                  Data 7
+                </div>
+              </div>
+              <div className="text-xs text-gray-300 text-center">Data Flow</div>
+            </div>
+
+            {/* Whiteboard Snippet 8 */}
+            <div className="bg-gray-700 p-2 sm:p-3 rounded-lg cursor-pointer hover:bg-gray-600 transition-colors">
+              <div className="aspect-video bg-page border border-selected rounded flex items-center justify-center mb-2">
+                <div className="text-gray-400 text-xs text-center px-2">
+                  Arch 8
+                </div>
+              </div>
+              <div className="text-xs text-gray-300 text-center">
+                Architecture
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Sidebar Toggle Button */}
+      <button
+        onClick={() => setSidebarOpen(!sidebarOpen)}
+        className={`fixed top-1/2 transform -translate-y-1/2 z-40 bg-page border border-selected hover:bg-gray-700 text-white px-2 sm:px-3 py-4 sm:py-6 rounded-l-lg shadow-lg transition-all duration-300 cursor-pointer ${
+          sidebarOpen
+            ? "right-64 sm:right-80 opacity-0 pointer-events-none"
+            : "right-0 opacity-100"
+        }`}
+      >
+        <span className="text-lg sm:text-xl font-bold">☰</span>
+      </button>
     </div>
   );
-}
+};
+
+export default Room;
