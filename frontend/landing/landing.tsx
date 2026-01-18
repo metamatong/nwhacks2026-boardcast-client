@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import HowItWorksModal from "./HowItWorksModal";
+import MouseTrail from "../components/MouseTrail";
 import DrawingToolbar from "../components/DrawingToolbar";
 
 export default function Landing() {
@@ -43,10 +44,8 @@ export default function Landing() {
         backgroundImage: `
           radial-gradient(circle, rgba(150, 150, 150, 0.15) 1.5px, transparent 1.5px)
         `,
-        backgroundSize: "40px 40px",
       }}
     >
-      {/* Hint badge */}
       <div className="absolute top-4 left-4 flex items-center gap-2 bg-background/70 px-3 py-1 rounded-md text-xs text-primary shadow-md z-20">
         <span className="text-yellow-400">★</span>
         <span className="text-[rgba(255,255,255,0.4)]">
@@ -54,7 +53,8 @@ export default function Landing() {
         </span>
       </div>
 
-      {/* Toolbar only (no MouseTrail) */}
+      <MouseTrail color={drawingColor} />
+
       <DrawingToolbar
         selectedColor={drawingColor}
         setSelectedColor={setDrawingColor}
@@ -65,13 +65,11 @@ export default function Landing() {
       <HowItWorksModal isOpen={showModal} onClose={() => setShowModal(false)} />
 
       <div className="w-full max-w-md relative z-10">
-        {/* Header */}
         <div className="mb-12 text-center">
           <h1 className="text-8xl font-bold text-primary mb-2">Boardcast</h1>
           <p className="text-secondary">Stream your whiteboard in real time</p>
         </div>
 
-        {/* Learn how */}
         <div className="space-y-6 mb-8">
           <button
             onClick={() => setShowModal(true)}
@@ -87,7 +85,6 @@ export default function Landing() {
           </div>
         </div>
 
-        {/* Card */}
         <div className="bg-page rounded-xl border border-selected p-8">
           <div className="flex gap-2 mb-8">
             <button
@@ -168,7 +165,6 @@ export default function Landing() {
           )}
         </div>
 
-        {/* Footer */}
         <div className="mt-8 text-center">
           <p className="text-xs text-muted leading-relaxed">
             Transform physical whiteboards into live, collaborative digital
