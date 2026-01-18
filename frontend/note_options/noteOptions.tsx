@@ -60,7 +60,7 @@ export default function NoteOptions() {
         <div className="flex flex-row justify-center gap-6">
           <button
             onClick={() => handleClick("download")}
-            className="px-4 py-2 flex flex-col items-center text-sm text-primary hover:text-blue-500 rounded-lg"
+            className="px-8 py-2 flex flex-col items-center text-sm text-primary hover:text-blue-500 rounded-lg"
             title="Download"
           >
             {renderIcon("download", ArrowDownTrayIcon)}
@@ -68,7 +68,7 @@ export default function NoteOptions() {
 
           <button
             onClick={() => handleClick("share")}
-            className="px-4 py-2 flex flex-col items-center text-sm text-primary hover:text-blue-500 rounded-lg"
+            className="px-8 py-2 flex flex-col items-center text-sm text-primary hover:text-blue-500 rounded-lg"
             title="Share"
           >
             {renderIcon("share", ShareIcon)}
@@ -76,7 +76,7 @@ export default function NoteOptions() {
 
           <button
             onClick={() => handleClick("pdf")}
-            className="px-4 py-2 flex flex-col items-center text-sm text-primary hover:text-blue-500 rounded-lg"
+            className="px-8 py-2 flex flex-col items-center text-sm text-primary hover:text-blue-500 rounded-lg"
             title="Download as PDF"
           >
             {renderIcon("pdf", BsFiletypePdf)}
