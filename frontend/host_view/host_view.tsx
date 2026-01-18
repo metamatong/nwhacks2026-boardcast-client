@@ -3,6 +3,7 @@
 
 import React, { useState, useCallback, useRef, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
+import { motion, AnimatePresence } from "framer-motion";
 import { X, Camera, SwitchCamera, Users, HelpCircle } from "lucide-react";
 
 interface Participant {
@@ -318,22 +319,33 @@ const HostView: React.FC = () => {
           />
 
           {/* Whiteboard detection overlay */}
-          {detectedRect && (
-            <div
-              className="absolute border-4 border-white rounded-lg pointer-events-none z-20 transition-all duration-300"
-              style={{
-                left: `${(detectedRect.x / (canvasRef.current?.width || 1)) * 100}%`,
-                top: `${(detectedRect.y / (canvasRef.current?.height || 1)) * 100}%`,
-                width: `${(detectedRect.width / (canvasRef.current?.width || 1)) * 100}%`,
-                height: `${(detectedRect.height / (canvasRef.current?.height || 1)) * 100}%`,
-                boxShadow: '0 0 0 9999px rgba(0, 0, 0, 0.3)',
-              }}
-            >
-              <div className="absolute -top-8 left-0 bg-white text-black px-3 py-1 rounded-md text-xs font-semibold shadow-lg">
-                Whiteboard Detected
-              </div>
-            </div>
-          )}
+          <AnimatePresence>
+            {detectedRect && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                transition={{ duration: 0.3 }}
+                className="absolute border-4 border-white rounded-lg pointer-events-none z-20 transition-all duration-300"
+                style={{
+                  left: `${(detectedRect.x / (canvasRef.current?.width || 1)) * 100}%`,
+                  top: `${(detectedRect.y / (canvasRef.current?.height || 1)) * 100}%`,
+                  width: `${(detectedRect.width / (canvasRef.current?.width || 1)) * 100}%`,
+                  height: `${(detectedRect.height / (canvasRef.current?.height || 1)) * 100}%`,
+                  boxShadow: '0 0 0 9999px rgba(0, 0, 0, 0.3)',
+                }}
+              >
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3, delay: 0.1 }}
+                  className="absolute -top-8 left-0 bg-white text-black px-3 py-1 rounded-md text-xs font-semibold shadow-lg"
+                >
+                  Whiteboard Detected
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           <div
             id="camera-flash"
@@ -343,55 +355,108 @@ const HostView: React.FC = () => {
       )}
 
       {/* Top Bar */}
-      <div className="absolute top-0 left-0 right-0 p-4 bg-gradient-to-b from-background/70 to-transparent backdrop-blur-sm z-10 flex items-start justify-between">
+      <motion.div
+        initial={{ y: -100, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ duration: 0.5 }}
+        className="absolute top-0 left-0 right-0 p-4 bg-gradient-to-b from-background/70 to-transparent backdrop-blur-sm z-10 flex items-start justify-between"
+      >
         <div className="flex-1 text-center space-y-1">
-          <h1 className="text-lg font-bold text-primary">{roomName}</h1>
-          <div className="flex items-center justify-center gap-2">
+          <motion.h1
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.5, delay: 0.2 }}
+            className="text-lg font-bold text-primary"
+          >
+            {roomName}
+          </motion.h1>
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.5, delay: 0.3 }}
+            className="flex items-center justify-center gap-2"
+          >
             <span className="text-xs text-muted">Room Code:</span>
             <code className="text-xs font-mono text-secondary font-semibold tracking-widest">
               {roomCode}
             </code>
-          </div>
+          </motion.div>
         </div>
         
         {/* Help Button */}
         {!noStream && (
-          <button
+          <motion.button
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.3, delay: 0.4 }}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
             onClick={(e) => {
               e.stopPropagation();
               handleShowHelp();
             }}
-            className="w-10 h-10 rounded-full border border-selected flex items-center justify-center cursor-pointer active:scale-95 bg-background/50 backdrop-blur-sm hover:bg-background/70 transition-all"
+            className="w-10 h-10 rounded-full border border-selected flex items-center justify-center cursor-pointer bg-background/50 backdrop-blur-sm hover:bg-background/70 transition-all"
             aria-label="Help & Tips"
           >
             <HelpCircle className="w-5 h-5 text-primary" />
-          </button>
+          </motion.button>
         )}
-      </div>
+      </motion.div>
 
       {/* Waiting State */}
-      {noStream && (
-        <div className="absolute inset-0 flex items-center justify-center z-10">
-          <div className="text-center space-y-6 p-8">
-            <Camera className="w-20 h-20 text-muted mx-auto" />
-            <div className="space-y-2">
-              <p className="text-secondary text-lg font-semibold">No Camera Stream</p>
-              <p className="text-muted text-sm">Tap anywhere to start streaming</p>
+      <AnimatePresence>
+        {noStream && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.5 }}
+            className="absolute inset-0 flex items-center justify-center z-10"
+          >
+            <div className="text-center space-y-6 p-8">
+              <motion.div
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ duration: 0.5, delay: 0.2 }}
+              >
+                <Camera className="w-20 h-20 text-muted mx-auto" />
+              </motion.div>
+              <motion.div
+                initial={{ y: 20, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ duration: 0.5, delay: 0.3 }}
+                className="space-y-2"
+              >
+                <p className="text-secondary text-lg font-semibold">No Camera Stream</p>
+                <p className="text-muted text-sm">Tap anywhere to start streaming</p>
+              </motion.div>
             </div>
-          </div>
-        </div>
-      )}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Bottom Controls */}
-      {!noStream && (
-        <div className="absolute bottom-8 left-0 right-0 flex items-center justify-center gap-4 px-6 z-10">
+      <AnimatePresence>
+        {!noStream && (
+          <motion.div
+            initial={{ y: 100, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 100, opacity: 0 }}
+            transition={{ duration: 0.5 }}
+            className="absolute bottom-8 left-0 right-0 flex items-center justify-center gap-4 px-6 z-10"
+          >
           {/* Participants Button with Avatars */}
-          <button
+          <motion.button
+            initial={{ x: -50, opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            transition={{ duration: 0.4, delay: 0.1 }}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
             onClick={(e) => {
               e.stopPropagation();
               handleViewParticipants();
             }}
-            className="px-4 h-16 relative rounded-full border border-selected flex items-center justify-center shadow-xl cursor-pointer active:scale-95 overflow-visible transition-transform backdrop-blur-sm"
+            className="px-4 h-16 relative rounded-full border border-selected flex items-center justify-center shadow-xl cursor-pointer overflow-visible transition-transform backdrop-blur-sm"
             aria-label="View Participants"
             style={{
               backgroundColor: "rgba(30, 30, 30, 0.8)",
@@ -412,15 +477,20 @@ const HostView: React.FC = () => {
               ))}
             </div>
             <span className="absolute inset-0 bg-white opacity-0 hover:opacity-5 transition-opacity rounded-full pointer-events-none" />
-          </button>
+          </motion.button>
 
           {/* End Stream Button */}
-          <button
+          <motion.button
+            initial={{ y: 50, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ duration: 0.4, delay: 0.2 }}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
             onClick={(e) => {
               e.stopPropagation();
               handleEndStream();
             }}
-            className="w-20 h-20 relative rounded-full border border-selected flex items-center justify-center shadow-xl cursor-pointer active:scale-95 overflow-hidden transition-transform backdrop-blur-sm"
+            className="w-20 h-20 relative rounded-full border border-selected flex items-center justify-center shadow-xl cursor-pointer overflow-hidden transition-transform backdrop-blur-sm"
             aria-label="End Stream"
             style={{
               backgroundColor: "rgba(30, 30, 30, 0.8)",
@@ -430,15 +500,20 @@ const HostView: React.FC = () => {
           >
             <X className="w-7 h-7 text-primary" />
             <span className="absolute inset-0 bg-white opacity-0 hover:opacity-5 transition-opacity rounded-full pointer-events-none" />
-          </button>
+          </motion.button>
 
           {/* Flip Camera Button */}
-          <button
+          <motion.button
+            initial={{ x: 50, opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            transition={{ duration: 0.4, delay: 0.1 }}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
             onClick={(e) => {
               e.stopPropagation();
               handleFlipCamera();
             }}
-            className="w-16 h-16 relative rounded-full border border-selected flex items-center justify-center shadow-xl cursor-pointer active:scale-95 overflow-hidden transition-transform backdrop-blur-sm"
+            className="w-16 h-16 relative rounded-full border border-selected flex items-center justify-center shadow-xl cursor-pointer overflow-hidden transition-transform backdrop-blur-sm"
             aria-label="Flip Camera"
             style={{
               backgroundColor: "rgba(30, 30, 30, 0.8)",
@@ -448,23 +523,33 @@ const HostView: React.FC = () => {
           >
             <SwitchCamera className="w-6 h-6 text-primary" />
             <span className="absolute inset-0 bg-white opacity-0 hover:opacity-5 transition-opacity rounded-full pointer-events-none" />
-          </button>
-        </div>
-      )}
+          </motion.button>
+        </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Participants Modal */}
-      {showParticipants && (
-        <div 
-          className="absolute inset-0 bg-background/90 backdrop-blur-md z-40 flex items-center justify-center p-4"
-          onClick={(e) => {
-            e.stopPropagation();
-            setShowParticipants(false);
-          }}
-        >
-          <div 
-            className="bg-page rounded-xl border border-selected p-6 max-w-md w-full space-y-4"
-            onClick={(e) => e.stopPropagation()}
+      <AnimatePresence>
+        {showParticipants && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
+            className="absolute inset-0 bg-background/90 backdrop-blur-md z-40 flex items-center justify-center p-4"
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowParticipants(false);
+            }}
           >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              transition={{ duration: 0.3 }}
+              className="bg-page rounded-xl border border-selected p-6 max-w-md w-full space-y-4"
+              onClick={(e) => e.stopPropagation()}
+            >
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-bold text-primary">Participants</h2>
               <button
@@ -491,23 +576,33 @@ const HostView: React.FC = () => {
                 <p className="text-xs text-muted mt-1">Share room code: <span className="font-mono text-secondary">{roomCode}</span></p>
               </div>
             </div>
-          </div>
-        </div>
-      )}
+          </motion.div>
+        </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Help Modal */}
-      {showHelp && (
-        <div 
-          className="absolute inset-0 bg-background/90 backdrop-blur-md z-40 flex items-center justify-center p-4"
-          onClick={(e) => {
-            e.stopPropagation();
-            setShowHelp(false);
-          }}
-        >
-          <div 
-            className="bg-page rounded-xl border border-selected p-6 max-w-md w-full space-y-4 max-h-[80vh] overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}
+      <AnimatePresence>
+        {showHelp && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
+            className="absolute inset-0 bg-background/90 backdrop-blur-md z-40 flex items-center justify-center p-4"
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowHelp(false);
+            }}
           >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              transition={{ duration: 0.3 }}
+              className="bg-page rounded-xl border border-selected p-6 max-w-md w-full space-y-4 max-h-[80vh] overflow-y-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-bold text-primary">Stream Quality Tips</h2>
               <button
@@ -559,9 +654,10 @@ const HostView: React.FC = () => {
                 </ul>
               </div>
             </div>
-          </div>
-        </div>
-      )}
+          </motion.div>
+        </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

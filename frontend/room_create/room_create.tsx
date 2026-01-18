@@ -2,6 +2,7 @@
 
 import { useSearchParams, useRouter } from "next/navigation";
 import { useState } from "react";
+import { motion } from "framer-motion";
 
 export default function RoomCreatePage() {
   const searchParams = useSearchParams();
@@ -33,50 +34,109 @@ export default function RoomCreatePage() {
         backgroundSize: "40px 40px",
       }}
     >
-      <div className="w-full max-w-md relative z-10">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6 }}
+        className="w-full max-w-md relative z-10"
+      >
         {/* Heading */}
-        <div className="mb-4 text-center">
-          <h1 className="text-6xl font-bold text-primary mb-2">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.6, delay: 0.1 }}
+          className="mb-4 text-center"
+        >
+          <motion.h1
+            initial={{ y: -20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ duration: 0.6, delay: 0.2 }}
+            className="text-6xl font-bold text-primary mb-2"
+          >
             Room Created!
-          </h1>
-          <p className="text-secondary">
+          </motion.h1>
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.5, delay: 0.3 }}
+            className="text-secondary"
+          >
             Set your room title and invite others
-          </p>
-        </div>
+          </motion.p>
+        </motion.div>
 
         {/* Room Card */}
-        <div className="bg-page rounded-xl border border-selected p-8 space-y-6">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.4 }}
+          className="bg-page rounded-xl border border-selected p-8 space-y-6"
+        >
           {/* Room Title & ID */}
-          <div className="flex flex-col gap-4">
-            <div className="flex-1 text-center">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.5, delay: 0.5 }}
+            className="flex flex-col gap-4"
+          >
+            <motion.div
+              initial={{ x: -20, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              transition={{ duration: 0.5, delay: 0.6 }}
+              className="flex-1 text-center"
+            >
               <p className="text-xs font-semibold text-muted uppercase tracking-wide mb-1">
                 Room Title
               </p>
               <div className="px-4 py-2 border border-selected rounded-lg bg-background text-primary font-semibold">
                 {title}
               </div>
-            </div>
+            </motion.div>
 
-            <div className="flex-1 text-center">
+            <motion.div
+              initial={{ x: 20, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              transition={{ duration: 0.5, delay: 0.7 }}
+              className="flex-1 text-center"
+            >
               <p className="text-xs font-semibold text-muted uppercase tracking-wide mb-1">
                 Room ID
               </p>
               <div className="px-4 py-2 border border-selected rounded-lg bg-background text-primary font-mono text-sm select-all">
                 {id}
               </div>
-            </div>
-          </div>
+            </motion.div>
+          </motion.div>
 
           {/* Tips / Instructions */}
-          <div className="bg-background/50 border border-primary/30 rounded-lg p-4 space-y-2.5 text-sm shadow-sm">
-            <p>• Keep this tab open while streaming your board.</p>
-            <p>• Ensure your phone sits securely before starting.</p>
-            <p>• The whole whiteboard should be captured on camera.</p>
-            <p>• Share the room code with others.</p>
-          </div>
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.8 }}
+            className="bg-background/50 border border-primary/30 rounded-lg p-4 space-y-2.5 text-sm shadow-sm"
+          >
+            {["• Keep this tab open while streaming your board.",
+              "• Ensure your phone sits securely before starting.",
+              "• The whole whiteboard should be captured on camera.",
+              "• Share the room code with others."].map((tip, index) => (
+              <motion.p
+                key={index}
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.3, delay: 0.9 + index * 0.1 }}
+              >
+                {tip}
+              </motion.p>
+            ))}
+          </motion.div>
 
           {/* Proceed Button */}
-          <button
+          <motion.button
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 1.3 }}
+            whileHover={{ scale: !isSubmitting ? 1.02 : 1 }}
+            whileTap={{ scale: !isSubmitting ? 0.98 : 1 }}
             onClick={handleProceed}
             disabled={isSubmitting}
             className={`w-full py-3 px-4 rounded-lg font-semibold transition-all cursor-pointer ${
@@ -86,17 +146,22 @@ export default function RoomCreatePage() {
             }`}
           >
             {isSubmitting ? "Proceeding..." : "Proceed to Room"}
-          </button>
-        </div>
+          </motion.button>
+        </motion.div>
 
         {/* Footer */}
-        <div className="mt-3 text-center">
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.5, delay: 1.4 }}
+          className="mt-3 text-center"
+        >
           <p className="text-xs text-muted leading-relaxed">
             Transform physical whiteboards into live, collaborative digital
             pages. Capture, stream, and save in real time.
           </p>
-        </div>
-      </div>
+        </motion.div>
+      </motion.div>
     </div>
   );
 }
