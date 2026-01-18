@@ -267,7 +267,8 @@ const WhiteboardArea: React.FC<{
   isConnected: boolean;
   hasStream: boolean;
   webrtcStatus: string;
-}> = ({ videoRef, isConnected, hasStream, webrtcStatus }) => (
+  keywordDetected?: boolean;
+}> = ({ videoRef, isConnected, hasStream, webrtcStatus, keywordDetected = false }) => (
   <div
     className="flex-1 bg-background flex items-center justify-center p-4 sm:p-6 lg:p-8 min-h-0 relative"
     style={{
@@ -287,7 +288,11 @@ const WhiteboardArea: React.FC<{
         autoPlay
         playsInline
         muted={false}
-        className={`w-full h-full object-contain ${hasStream ? 'block' : 'hidden'}`}
+        className={`w-full h-full object-contain transition-all duration-300 ${hasStream ? 'block' : 'hidden'}`}
+        style={keywordDetected ? {
+          boxShadow: '0 0 0 8px #22c55e, 0 0 30px 10px rgba(34, 197, 94, 0.8)',
+          border: '4px solid #22c55e'
+        } : {}}
       />
       
       {!hasStream && (
@@ -640,6 +645,8 @@ const Room: React.FC = () => {
   const [showParticipants, setShowParticipants] = useState(false);
   const [hasStream, setHasStream] = useState(false);
   const [webrtcStatus, setWebrtcStatus] = useState<string>('idle');
+  const [keywordDetected, setKeywordDetected] = useState(false);
+  const [transcripts, setTranscripts] = useState<string[]>([]);
 
   // Get room code from URL
   const roomCode = searchParams.get("id") || "ABC-123-XYZ";
@@ -734,12 +741,59 @@ const Room: React.FC = () => {
     }
   }, []);
 
+  // Handle transcript messages (participants can also receive transcripts)
+  const handleTranscript = useCallback((message: { type: 'transcript'; text: string }) => {
+    console.log("🎤 PARTICIPANT - TRANSCRIPT RECEIVED:", message);
+    console.log("📝 Transcript text:", message.text);
+    
+    // Add to transcript list
+    setTranscripts(prev => [...prev.slice(-4), message.text]); // Keep last 5
+    
+    // Check if the word "test" is in the transcript (case-insensitive)
+    const lowerText = message.text.toLowerCase();
+    console.log("🔍 Checking for 'test' in:", lowerText);
+    console.log("Current keywordDetected state:", keywordDetected);
+    
+    if (lowerText.includes('test')) {
+      console.log("✅ PARTICIPANT - KEYWORD 'test' DETECTED! Setting state to true...");
+      // Trigger glow effect
+      setKeywordDetected(true);
+      console.log("State set to true, border should show now");
+      // Also show alert for debugging
+      alert(`PARTICIPANT: DETECTED! Border should be showing. State: ${keywordDetected}`);
+      // Remove glow after 3 seconds
+      setTimeout(() => {
+        console.log("Removing glow effect");
+        setKeywordDetected(false);
+      }, 3000);
+    } else {
+      console.log("❌ Keyword 'test' NOT found in this transcript");
+    }
+  }, [keywordDetected]);
+
+  // Handle highlight messages
+  const handleHighlight = useCallback((message: { type: 'highlight'; title: string; detail: string }) => {
+    console.log("⭐ Participant - Highlight received:", message);
+    alert(`⭐ Highlight: ${message.title}\n\n${message.detail}`);
+  }, []);
+
+  // Handle keyword detected messages
+  const handleKeywordDetected = useCallback(() => {
+    console.log("🎯 PARTICIPANT - Keyword detected message received!");
+    // Trigger border effect
+    setKeywordDetected(true);
+    setTimeout(() => setKeywordDetected(false), 3000);
+  }, []);
+
   // Connect to WebSocket and get real participants
   const { participants: wsParticipants, isConnected, sendWebRTCSignal } = useRoomWebSocket({
     joinCode: roomCode,
     participantName: title,
     isHost: false,
     onWebRTCSignal: handleWebRTCSignal,
+    onTranscript: handleTranscript,
+    onHighlight: handleHighlight,
+    onKeywordDetected: handleKeywordDetected,
   });
 
   // Cleanup peer connection on unmount
@@ -844,7 +898,29 @@ const Room: React.FC = () => {
         isConnected={isConnected}
         hasStream={hasStream}
         webrtcStatus={webrtcStatus}
+        keywordDetected={keywordDetected}
       />
+      
+      {/* Transcript Display */}
+      {transcripts.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="fixed bottom-32 left-4 right-4 z-50 pointer-events-none"
+        >
+          <div className="bg-black/70 backdrop-blur-md rounded-lg p-4 max-w-2xl mx-auto border border-white/20">
+            <div className="text-xs text-white/60 mb-2 font-semibold">LIVE TRANSCRIPTION:</div>
+            <div className="space-y-1">
+              {transcripts.map((text, idx) => (
+                <div key={idx} className="text-sm text-white/90">
+                  {text}
+                </div>
+              ))}
+            </div>
+          </div>
+        </motion.div>
+      )}
+      
       <ControlPanel
         onShareScreen={handleShareScreen}
         onStartRecording={handleStartRecording}

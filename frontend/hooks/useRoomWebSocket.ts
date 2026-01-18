@@ -15,25 +15,49 @@ interface WebRTCSignal {
   to?: string;
 }
 
+interface TranscriptMessage {
+  type: 'transcript';
+  text: string;
+}
+
+interface HighlightMessage {
+  type: 'highlight';
+  title: string;
+  detail: string;
+}
+
+interface KeywordDetectedMessage {
+  type: 'keyword-detected';
+}
+
 interface UseRoomWebSocketProps {
   joinCode: string | null;
   participantName: string;
   isHost?: boolean;
   onWebRTCSignal?: (signal: WebRTCSignal) => void;
+  onTranscript?: (message: TranscriptMessage) => void;
+  onHighlight?: (message: HighlightMessage) => void;
+  onKeywordDetected?: (message: KeywordDetectedMessage) => void;
 }
 
-export function useRoomWebSocket({ joinCode, participantName, isHost = false, onWebRTCSignal }: UseRoomWebSocketProps) {
+export function useRoomWebSocket({ joinCode, participantName, isHost = false, onWebRTCSignal, onTranscript, onHighlight, onKeywordDetected }: UseRoomWebSocketProps) {
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [isConnected, setIsConnected] = useState(false);
   const [roomId, setRoomId] = useState<string | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const clientIdRef = useRef<string>(Math.random().toString(36).substring(7));
   const onWebRTCSignalRef = useRef(onWebRTCSignal);
+  const onTranscriptRef = useRef(onTranscript);
+  const onHighlightRef = useRef(onHighlight);
+  const onKeywordDetectedRef = useRef(onKeywordDetected);
 
-  // Keep callback ref updated
+  // Keep callback refs updated
   useEffect(() => {
     onWebRTCSignalRef.current = onWebRTCSignal;
-  }, [onWebRTCSignal]);
+    onTranscriptRef.current = onTranscript;
+    onHighlightRef.current = onHighlight;
+    onKeywordDetectedRef.current = onKeywordDetected;
+  }, [onWebRTCSignal, onTranscript, onHighlight, onKeywordDetected]);
 
   // Get client ID
   const getClientId = useCallback(() => clientIdRef.current, []);
@@ -111,6 +135,39 @@ export function useRoomWebSocket({ joinCode, participantName, isHost = false, on
               // Forward WebRTC signaling to callback
               if (onWebRTCSignalRef.current && msg.from !== clientIdRef.current) {
                 onWebRTCSignalRef.current(msg as WebRTCSignal);
+              }
+              break;
+
+            case 'transcript':
+              console.log('📝 WebSocket: Transcript message received:', msg);
+              // Forward transcript to callback
+              if (onTranscriptRef.current) {
+                console.log('📝 WebSocket: Calling onTranscript callback');
+                onTranscriptRef.current(msg as TranscriptMessage);
+              } else {
+                console.warn('📝 WebSocket: No onTranscript callback registered!');
+              }
+              break;
+
+            case 'highlight':
+              console.log('⭐ WebSocket: Highlight message received:', msg);
+              // Forward highlight to callback
+              if (onHighlightRef.current) {
+                console.log('⭐ WebSocket: Calling onHighlight callback');
+                onHighlightRef.current(msg as HighlightMessage);
+              } else {
+                console.warn('⭐ WebSocket: No onHighlight callback registered!');
+              }
+              break;
+
+            case 'keyword-detected':
+              console.log('🎯 WebSocket: Keyword detected message received:', msg);
+              // Forward to callback
+              if (onKeywordDetectedRef.current) {
+                console.log('🎯 WebSocket: Calling onKeywordDetected callback');
+                onKeywordDetectedRef.current(msg as KeywordDetectedMessage);
+              } else {
+                console.warn('🎯 WebSocket: No onKeywordDetected callback registered!');
               }
               break;
 

@@ -34,6 +34,8 @@ const HostView: React.FC = () => {
   const [showParticipants, setShowParticipants] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   const [webrtcStatus, setWebrtcStatus] = useState<string>("idle");
+  const [keywordDetected, setKeywordDetected] = useState(false);
+  const [transcripts, setTranscripts] = useState<string[]>([]);
 
   // Audio recording state
   const [audioChunks, setAudioChunks] = useState<Blob[]>([]);
@@ -49,6 +51,7 @@ const HostView: React.FC = () => {
   // Refs
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const sendMessageRef = useRef<((message: any) => void) | null>(null);
 
   // WebRTC peer connections (one per participant)
   const peerConnectionsRef = useRef<Map<string, RTCPeerConnection>>(new Map());
@@ -82,17 +85,18 @@ const HostView: React.FC = () => {
 
       if (response.ok) {
         const data = await response.json();
-        console.log("Audio chunk uploaded successfully:", data);
+        console.log("✅ Audio chunk uploaded successfully:", data);
       } else {
         const errorText = await response.text();
         console.error(
-          "Failed to upload audio chunk:",
+          "❌ Failed to upload audio chunk:",
           response.status,
           errorText,
         );
       }
     } catch (error) {
-      console.error("Error uploading audio chunk:", error);
+      console.error("❌ Network error uploading audio chunk (server may be down):", error);
+      // Don't throw - continue recording even if server is unavailable
     }
   }, []);
 
@@ -168,8 +172,13 @@ const HostView: React.FC = () => {
 
     if (type === "webrtc-answer" && pc) {
       try {
-        await pc.setRemoteDescription(new RTCSessionDescription(sdp));
-        console.log("Set remote description (answer) from:", from);
+        // Only set remote description if we're in the right state
+        if (pc.signalingState === "have-local-offer") {
+          await pc.setRemoteDescription(new RTCSessionDescription(sdp));
+          console.log("Set remote description (answer) from:", from);
+        } else {
+          console.warn(`Cannot set remote description, peer connection is in ${pc.signalingState} state`);
+        }
       } catch (error) {
         console.error("Error setting remote description:", error);
       }
@@ -183,19 +192,60 @@ const HostView: React.FC = () => {
     }
   }, []);
 
+  // Handle transcript messages
+  const handleTranscript = useCallback((message: { type: 'transcript'; text: string }) => {
+    console.log("🎤 TRANSCRIPT RECEIVED:", message);
+    console.log("Transcript text:", message.text);
+    
+    // Add to transcript list
+    setTranscripts(prev => [...prev.slice(-4), message.text]); // Keep last 5
+    
+    // Check if the word "test" is in the transcript (case-insensitive)
+    const lowerText = message.text.toLowerCase();
+    console.log("Checking for 'test' in:", lowerText);
+    
+    if (lowerText.includes('test')) {
+      console.log("✅ KEYWORD 'test' DETECTED!");
+      alert(`DETECTED! Border should be showing.`);
+      // Trigger locally
+      setKeywordDetected(true);
+      setTimeout(() => setKeywordDetected(false), 3000);
+      // Broadcast to participants
+      if (sendMessageRef.current) {
+        sendMessageRef.current({ type: 'keyword-detected' });
+      }
+    } else {
+      console.log("❌ Keyword 'test' NOT found in this transcript");
+    }
+  }, []);
+
+  // Handle highlight messages
+  const handleHighlight = useCallback((message: { type: 'highlight'; title: string; detail: string }) => {
+    console.log("Highlight received:", message);
+    alert(`⭐ Highlight: ${message.title}\n\n${message.detail}`);
+  }, []);
+
   // Connect to WebSocket
   const {
     participants: wsParticipants,
     isConnected,
     roomId,
     sendWebRTCSignal,
+    sendMessage,
     getClientId,
   } = useRoomWebSocket({
     joinCode: roomCode,
     participantName: "Host",
     isHost: true,
     onWebRTCSignal: handleWebRTCSignal,
+    onTranscript: handleTranscript,
+    onHighlight: handleHighlight,
   });
+
+  // Store sendMessage in ref
+  useEffect(() => {
+    sendMessageRef.current = sendMessage;
+  }, [sendMessage]);
 
   // Sync roomId to ref for audio uploads
   useEffect(() => {
@@ -260,7 +310,7 @@ const HostView: React.FC = () => {
     setStage("live");
     console.log("Stream is now live");
 
-    // Start audio recording for transcription
+    // Start audio recording for transcription (server-side)
     startAudioRecording();
   }, [stage, startAudioRecording]);
 
@@ -430,7 +480,11 @@ const HostView: React.FC = () => {
       {/* Video element - always in DOM for mobile compatibility */}
       <video
         ref={videoRef}
-        className={`absolute inset-0 w-full h-full object-cover bg-black ${stage === "live" ? "block" : "hidden"}`}
+        className={`absolute inset-0 w-full h-full object-cover bg-black ${stage === "live" ? "block" : "hidden"} transition-all duration-300`}
+        style={keywordDetected ? {
+          boxShadow: '0 0 0 8px #22c55e, 0 0 30px 10px rgba(34, 197, 94, 0.8)',
+          border: '4px solid #22c55e'
+        } : {}}
         autoPlay
         playsInline
         muted
@@ -469,6 +523,24 @@ const HostView: React.FC = () => {
 
         {stage === "live" && (
           <div className="flex items-center gap-2">
+            {/* Test Border Button */}
+            <motion.button
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => {
+                console.log("TEST BUTTON CLICKED - Triggering border for all");
+                // Trigger locally
+                setKeywordDetected(true);
+                setTimeout(() => setKeywordDetected(false), 3000);
+                // Broadcast to participants
+                sendMessage({ type: 'keyword-detected' });
+              }}
+              className="px-3 py-2 rounded-full border border-green-500 bg-green-500/20 text-green-500 text-xs font-bold cursor-pointer backdrop-blur-sm"
+            >
+              TEST
+            </motion.button>
             {/* Recording Indicator */}
             {isRecordingAudio && (
               <motion.div
@@ -493,6 +565,26 @@ const HostView: React.FC = () => {
           </div>
         )}
       </motion.div>
+
+      {/* Transcript Display */}
+      {stage === "live" && transcripts.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="absolute bottom-32 left-4 right-4 z-20 pointer-events-none"
+        >
+          <div className="bg-black/70 backdrop-blur-md rounded-lg p-4 max-w-2xl mx-auto border border-white/20">
+            <div className="text-xs text-white/60 mb-2 font-semibold">LIVE TRANSCRIPTION:</div>
+            <div className="space-y-1">
+              {transcripts.map((text, idx) => (
+                <div key={idx} className="text-sm text-white/90">
+                  {text}
+                </div>
+              ))}
+            </div>
+          </div>
+        </motion.div>
+      )}
 
       {/* Stage: Idle - Request Permission */}
       <AnimatePresence>
