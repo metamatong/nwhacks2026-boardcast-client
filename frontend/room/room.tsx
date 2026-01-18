@@ -23,6 +23,9 @@ import {
   Save,
 } from "lucide-react";
 import { useRoomWebSocket } from "@/frontend/hooks/useRoomWebSocket";
+import HighlightToast, {
+  HighlightPayload,
+} from "@/frontend/components/HighlightToast";
 
 // ICE servers for WebRTC
 const ICE_SERVERS: RTCConfiguration = {
@@ -761,6 +764,8 @@ const Room: React.FC = () => {
   const [showParticipants, setShowParticipants] = useState(false);
   const [hasStream, setHasStream] = useState(false);
   const [webrtcStatus, setWebrtcStatus] = useState<string>("idle");
+  const [highlight, setHighlight] = useState<HighlightPayload | null>(null);
+  const [showHighlight, setShowHighlight] = useState(false);
 
   // Get room code from URL
   const roomCode = searchParams.get("id");
@@ -771,6 +776,7 @@ const Room: React.FC = () => {
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
   const pendingCandidatesRef = useRef<RTCIceCandidateInit[]>([]);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const highlightTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Ref to hold sendWebRTCSignal function for use in callback
   const sendWebRTCSignalRef = useRef<((signal: any) => void) | null>(null);
@@ -793,6 +799,35 @@ const Room: React.FC = () => {
     },
     [],
   );
+
+  const handleHighlight = useCallback((payload: HighlightPayload) => {
+    const highlightPayload =
+      payload.highlight && typeof payload.highlight === "object"
+        ? (payload.highlight as HighlightPayload)
+        : payload;
+
+    setHighlight(highlightPayload);
+    setShowHighlight(true);
+  }, []);
+
+  useEffect(() => {
+    if (!showHighlight) return;
+
+    if (highlightTimeoutRef.current) {
+      clearTimeout(highlightTimeoutRef.current);
+    }
+
+    highlightTimeoutRef.current = setTimeout(() => {
+      setShowHighlight(false);
+    }, 8000);
+
+    return () => {
+      if (highlightTimeoutRef.current) {
+        clearTimeout(highlightTimeoutRef.current);
+        highlightTimeoutRef.current = null;
+      }
+    };
+  }, [showHighlight, highlight]);
 
   // Handle incoming WebRTC signals
   const handleWebRTCSignal = useCallback(async (signal: any) => {
@@ -895,6 +930,7 @@ const Room: React.FC = () => {
     isHost: false,
     onWebRTCSignal: handleWebRTCSignal,
     onScreenshot: handleScreenshot,
+    onHighlight: handleHighlight,
   });
 
   // Update the ref when sendWebRTCSignal is available
@@ -1230,6 +1266,15 @@ const Room: React.FC = () => {
           <span className="text-xs text-yellow-200">Connecting to room...</span>
         </div>
       )}
+
+      <AnimatePresence>
+        {showHighlight && highlight && (
+          <HighlightToast
+            highlight={highlight}
+            onClose={() => setShowHighlight(false)}
+          />
+        )}
+      </AnimatePresence>
 
       <Header
         roomCode={roomCode}
