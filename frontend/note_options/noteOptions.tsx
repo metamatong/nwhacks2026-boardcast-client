@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { motion } from "framer-motion";
 import {
   ArrowDownTrayIcon,
   ShareIcon,
@@ -147,7 +148,9 @@ export default function NoteOptions() {
   };
 
   const renderIcon = (action: Action, Icon: any, label: string) => (
-    <button
+    <motion.button
+      whileHover={{ scale: 1.05 }}
+      whileTap={{ scale: 0.95 }}
       onMouseEnter={() => handleMouseEnter(action)}
       onMouseLeave={handleMouseLeave}
       onFocus={() => handleFocus(action)}
@@ -155,9 +158,9 @@ export default function NoteOptions() {
       onClick={() => handleClick(action)}
       title={label}
       aria-label={label}
-      className="flex flex-col items-center gap-2 px-4 py-2 rounded-lg text-sm text-primary hover:text-blue-500 transition-colors cursor-pointer mt-1"
+      className="flex flex-col items-center gap-2 px-4 py-2 rounded-lg text-sm text-primary hover:text-blue-500 transition-colors cursor-pointer"
     >
-      <div className="relative h-6 w-14 pt-1 flex items-center justify-center">
+      <div className="relative h-10 w-10 flex items-center justify-center shadow-sm">
         <Icon
           className={`absolute h-6 w-6 transition-opacity duration-300 ${
             clicked === action ? "opacity-0" : "opacity-100"
@@ -171,7 +174,7 @@ export default function NoteOptions() {
       </div>
 
       <span className="text-xs text-secondary">{label}</span>
-    </button>
+    </motion.button>
   );
 
   const helperText = shareMessage
@@ -194,52 +197,123 @@ export default function NoteOptions() {
         backgroundSize: "40px 40px",
       }}
     >
-      <div className="max-w-md w-full z-10">
-        <h1 className="text-4xl md:text-5xl font-bold text-primary mb-2 text-center">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6 }}
+        className="max-w-md w-full z-10"
+      >
+        <motion.h1
+          initial={{ y: -20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ duration: 0.6, delay: 0.2 }}
+          className="text-4xl md:text-5xl font-bold text-primary mb-2 text-center"
+        >
           Notes Saved!
-        </h1>
-        <p className="text-sm md:text-base text-secondary text-center mb-2">
+        </motion.h1>
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.5, delay: 0.3 }}
+          className="text-sm md:text-base text-secondary mb-3 text-center"
+        >
           Sign in to download, share, or save your notes as a PDF.
-        </p>
-        <div className="text-[11px] text-muted mb-4 text-center">
+        </motion.p>
+
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.5, delay: 0.4 }}
+          className="text-[11px] text-muted mb-3 text-center"
+        >
           Session snapshot captured just now — nothing will be lost.
-        </div>
-        <div className="bg-page rounded-xl border border-selected p-6 shadow-lg text-center">
-          <img
+        </motion.div>
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.6, delay: 0.1 }}
+          className="bg-page rounded-xl border border-selected p-6 shadow-lg text-center"
+        >
+          <motion.img
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.6, delay: 0.5 }}
             src="/digital_board_example.png"
             alt="Preview"
-            className="max-w-full rounded-lg border border-selected mb-4"
+            className="max-w-full rounded-lg border border-selected mt-2 mb-4"
           />
 
-          <div className="flex flex-row justify-center gap-6 mb-3">
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.6 }}
+            className="flex flex-row justify-center gap-6 mb-3"
+          >
             {renderIcon("download", ArrowDownTrayIcon, "Download")}
             {renderIcon("share", ShareIcon, "Share")}
             {renderIcon("pdf", BsFiletypePdf, "Save as PDF")}
-          </div>
+          </motion.div>
 
-          <p className="text-xs text-secondary min-h-[2.5rem] flex items-center justify-center text-center px-4">
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.5, delay: 0.7 }}
+            className="text-xs text-secondary min-h-[2.5rem] flex items-center justify-center text-center px-4"
+          >
             {helperText}
-          </p>
+          </motion.p>
 
-          <div className="mt-3 text-left text-xs text-muted space-y-2">
+          <motion.button
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.8 }}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            className="mt-2 w-full py-3 px-4 rounded-lg font-semibold bg-blue-500 text-background hover:opacity-85 transition-all cursor-pointer text-sm"
+          >
+            Sign in to unlock these options
+          </motion.button>
+
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.5, delay: 0.9 }}
+            className="mt-5 text-left text-xs text-muted space-y-2"
+          >
             <p className="uppercase tracking-wide font-semibold text-[10px] text-muted">
               What happens when you sign in
             </p>
             <ul className="space-y-1 list-disc list-inside">
-              <li>Keep a history of all your whiteboard captures.</li>
-              <li>Download high-quality images and PDFs of your notes.</li>
-              <li>Generate share links to send notes to your team.</li>
+              {[
+                "Keep a history of all your whiteboard captures.",
+                "Download high-quality images and PDFs of your notes.",
+                "Generate share links to send notes to your team.",
+              ].map((item, index) => (
+                <motion.li
+                  key={index}
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.3, delay: 1.0 + index * 0.1 }}
+                >
+                  {item}
+                </motion.li>
+              ))}
             </ul>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
 
-        <div className="mt-5 text-center">
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.5, delay: 1.3 }}
+          className="mt-5 text-center"
+        >
           <p className="text-[11px] text-muted leading-relaxed">
             You can always return to this page from your recent sessions. Your
             notes stay synced until you clear them.
           </p>
-        </div>
-      </div>
+        </motion.div>
+      </motion.div>
     </div>
   );
 }
