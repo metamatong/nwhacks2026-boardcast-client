@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useCallback } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Share,
   Circle,
@@ -115,9 +116,19 @@ const Header: React.FC<{
   onToggleParticipants,
   onKickParticipant,
 }) => (
-  <header className="bg-page/80 backdrop-blur-sm border-b border-selected p-4 shrink-0 z-10 sticky top-0">
+  <motion.header
+    initial={{ y: -100, opacity: 0 }}
+    animate={{ y: 0, opacity: 1 }}
+    transition={{ duration: 0.5 }}
+    className="bg-page/80 backdrop-blur-sm border-b border-selected p-4 shrink-0 z-10 sticky top-0"
+  >
     <div className="max-w-7xl mx-auto">
-      <div className="hidden md:flex items-center justify-between gap-4">
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.5, delay: 0.2 }}
+        className="hidden md:flex items-center justify-between gap-4"
+      >
         <div className="flex-1 min-w-0">
           <h1 className="text-xl font-bold text-primary truncate">{title}</h1>
         </div>
@@ -130,7 +141,9 @@ const Header: React.FC<{
               {roomCode}
             </code>
           </div>
-          <button
+          <motion.button
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
             onClick={onCopyCode}
             className="p-2 hover:bg-hover bg-transparent! rounded-lg transition-colors cursor-pointer group outline-none focus:outline-none focus:ring-0 focus-visible:outline-none"
             aria-label="Copy room code"
@@ -140,7 +153,7 @@ const Header: React.FC<{
             ) : (
               <Copy className="w-4 h-4 text-secondary group-hover:text-primary transition-colors" />
             )}
-          </button>
+          </motion.button>
         </div>
         <div className="relative">
           <div
@@ -155,8 +168,15 @@ const Header: React.FC<{
               <span className="text-xs text-muted">In Room</span>
             </div>
           </div>
-          {showParticipants && (
-            <div className="absolute right-0 top-full mt-2 w-64 bg-page border border-selected rounded-xl shadow-2xl overflow-hidden z-50">
+          <AnimatePresence>
+            {showParticipants && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: -10 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: -10 }}
+                transition={{ duration: 0.2 }}
+                className="absolute right-0 top-full mt-2 w-64 bg-page border border-selected rounded-xl shadow-2xl overflow-hidden z-50"
+              >
               <div className="px-4 py-3 border-b border-selected bg-background/50 backdrop-blur-sm flex justify-between items-center">
                 <span className="text-xs font-bold text-muted uppercase tracking-wider">
                   Participants
@@ -194,11 +214,17 @@ const Header: React.FC<{
                   </div>
                 ))}
               </div>
-            </div>
-          )}
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
-      </div>
-      <div className="md:hidden space-y-3">
+      </motion.div>
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.5, delay: 0.2 }}
+        className="md:hidden space-y-3"
+      >
         <div className="flex items-center justify-between">
           <h1 className="text-lg font-bold text-primary truncate">{title}</h1>
           <ParticipantAvatars participants={participants} />
@@ -207,7 +233,9 @@ const Header: React.FC<{
           <code className="font-mono text-sm text-primary font-bold tracking-widest flex-1">
             {roomCode}
           </code>
-          <button
+          <motion.button
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
             onClick={onCopyCode}
             className="p-1.5 hover:bg-hover rounded transition-colors cursor-pointer outline-none focus:outline-none focus:ring-0 focus-visible:outline-none"
             aria-label="Copy room code"
@@ -217,11 +245,11 @@ const Header: React.FC<{
             ) : (
               <Copy className="w-4 h-4 text-secondary" />
             )}
-          </button>
+          </motion.button>
         </div>
-      </div>
+      </motion.div>
     </div>
-  </header>
+  </motion.header>
 );
 
 const WhiteboardArea: React.FC = () => (
@@ -232,13 +260,28 @@ const WhiteboardArea: React.FC = () => (
       backgroundSize: "24px 24px",
     }}
   >
-    <div className="w-full h-full max-w-6xl bg-page/50 backdrop-blur-sm border border-selected rounded-xl flex items-center justify-center shadow-xl">
+    <motion.div
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ duration: 0.6, delay: 0.3 }}
+      className="w-full h-full max-w-6xl bg-page/50 backdrop-blur-sm border border-selected rounded-xl flex items-center justify-center shadow-xl"
+    >
       <div className="text-center space-y-6 p-8">
-        <div className="relative inline-block">
+        <motion.div
+          initial={{ scale: 0.8, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ duration: 0.5, delay: 0.5 }}
+          className="relative inline-block"
+        >
           <Layers className="w-20 h-20 text-muted mx-auto" />
           <div className="absolute -top-1 -right-1 w-3 h-3 bg-primary rounded-full animate-pulse" />
-        </div>
-        <div className="space-y-2">
+        </motion.div>
+        <motion.div
+          initial={{ y: 20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ duration: 0.5, delay: 0.6 }}
+          className="space-y-2"
+        >
           <p className="text-secondary text-lg font-semibold">
             Whiteboard Ready
           </p>
@@ -246,13 +289,18 @@ const WhiteboardArea: React.FC = () => (
             Start sharing your screen or use whiteboard tools to collaborate in
             real-time
           </p>
-        </div>
-        <div className="flex items-center justify-center gap-2 text-xs text-muted">
+        </motion.div>
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.5, delay: 0.7 }}
+          className="flex items-center justify-center gap-2 text-xs text-muted"
+        >
           <div className="w-2 h-2 bg-primary rounded-full animate-pulse" />
           <span>Waiting for content...</span>
-        </div>
+        </motion.div>
       </div>
-    </div>
+    </motion.div>
   </div>
 );
 
@@ -269,7 +317,9 @@ const Controla: React.FC<{
     danger: "bg-hover text-primary hover:border-red-500 border border-selected",
   };
   return (
-    <button
+    <motion.button
+      whileHover={{ scale: disabled ? 1 : 1.02 }}
+      whileTap={{ scale: disabled ? 1 : 0.98 }}
       onClick={onClick}
       disabled={disabled}
       className={`${variantClasses[variant]} ${
@@ -278,7 +328,7 @@ const Controla: React.FC<{
     >
       {icon}
       <span className="hidden sm:inline text-sm">{label}</span>
-    </button>
+    </motion.button>
   );
 };
 
@@ -295,9 +345,19 @@ const ControlPanel: React.FC<{
   onEndSession,
   isRecording,
 }) => (
-  <div className="bg-page/80 backdrop-blur-sm border-t border-selected p-4 shrink-0">
+  <motion.div
+    initial={{ y: 100, opacity: 0 }}
+    animate={{ y: 0, opacity: 1 }}
+    transition={{ duration: 0.5, delay: 0.4 }}
+    className="bg-page/80 backdrop-blur-sm border-t border-selected p-4 shrink-0"
+  >
     <div className="max-w-7xl mx-auto">
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.5, delay: 0.6 }}
+        className="grid grid-cols-2 lg:grid-cols-4 gap-3"
+      >
         <Controla
           icon={<Share className="w-4 h-4" />}
           label="Share Screen"
@@ -328,9 +388,9 @@ const ControlPanel: React.FC<{
           onClick={onEndSession}
           variant="primary"
         />
-      </div>
+      </motion.div>
     </div>
-  </div>
+  </motion.div>
 );
 
 const SnippetCard: React.FC<{
@@ -340,7 +400,12 @@ const SnippetCard: React.FC<{
 }> = ({ snippet, onClick, onDelete }) => {
   const [isHovered, setIsHovered] = useState(false);
   return (
-    <div
+    <motion.div
+      initial={{ opacity: 0, scale: 0.9 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.9 }}
+      whileHover={{ scale: 1.02 }}
+      transition={{ duration: 0.2 }}
       className={`group bg-background p-3 rounded-lg border border-selected transition-all ${
         isHovered ? "bg-hover border-primary" : ""
       } relative`}
@@ -366,19 +431,27 @@ const SnippetCard: React.FC<{
           })}
         </div>
       </button>
-      {isHovered && (
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onDelete();
-          }}
-          className="absolute top-2 right-2 p-1.5 hover:bg-red-500/20 border border-transparent hover:border-red-500 rounded-md transition-all cursor-pointer outline-none focus:outline-none focus:ring-0 focus-visible:outline-none"
-          aria-label="Delete snippet"
-        >
-          <Trash2 className="w-3 h-3 text-muted group-hover:text-red-500" />
-        </button>
-      )}
-    </div>
+      <AnimatePresence>
+        {isHovered && (
+          <motion.button
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.8 }}
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+            transition={{ duration: 0.15 }}
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete();
+            }}
+            className="absolute top-2 right-2 p-1.5 hover:bg-red-500/20 border border-transparent hover:border-red-500 rounded-md transition-all cursor-pointer outline-none focus:outline-none focus:ring-0 focus-visible:outline-none"
+            aria-label="Delete snippet"
+          >
+            <Trash2 className="w-3 h-3 text-muted group-hover:text-red-500" />
+          </motion.button>
+        )}
+      </AnimatePresence>
+    </motion.div>
   );
 };
 
@@ -398,16 +471,23 @@ const Sidebar: React.FC<{
   onCreateSnippet,
 }) => (
   <>
-    <div
-      className={`fixed inset-0 bg-background/80 backdrop-blur-sm transition-opacity duration-300 z-40 lg:hidden ${
-        isOpen ? "opacity-100" : "opacity-0 pointer-events-none"
-      }`}
-      onClick={onClose}
-    />
-    <aside
-      className={`fixed right-0 top-0 h-full w-80 lg:w-96 bg-page/95 backdrop-blur-md border-l border-selected shadow-2xl transform transition-transform duration-300 ease-out z-50 ${
-        isOpen ? "translate-x-0" : "translate-x-full"
-      }`}
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.3 }}
+          className="fixed inset-0 bg-background/80 backdrop-blur-sm z-40 lg:hidden"
+          onClick={onClose}
+        />
+      )}
+    </AnimatePresence>
+    <motion.aside
+      initial={{ x: "100%" }}
+      animate={{ x: isOpen ? 0 : "100%" }}
+      transition={{ duration: 0.3, ease: "easeOut" }}
+      className="fixed right-0 top-0 h-full w-80 lg:w-96 bg-page/95 backdrop-blur-md border-l border-selected shadow-2xl z-50"
     >
       <div className="flex flex-col h-full">
         <div className="flex items-center justify-between p-6 border-b border-selected shrink-0">
@@ -420,50 +500,84 @@ const Sidebar: React.FC<{
               <p className="text-xs text-muted">{snippets.length} saved</p>
             </div>
           </div>
-          <button
+          <motion.button
+            whileHover={{ scale: 1.1, rotate: 90 }}
+            whileTap={{ scale: 0.9 }}
             onClick={onClose}
             className="p-2 hover:bg-hover rounded-lg transition-colors cursor-pointer outline-none focus:outline-none focus:ring-0 focus-visible:outline-none"
             aria-label="Close sidebar"
           >
             <X className="w-5 h-5 text-secondary" />
-          </button>
+          </motion.button>
         </div>
         <div className="p-4 border-b border-selected space-y-2 shrink-0">
-          <button
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
             onClick={onCreateSnippet}
             className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-500 text-background rounded-lg font-semibold hover:opacity-80 transition-all cursor-pointer outline-none focus:outline-none focus:ring-0 focus-visible:outline-none"
           >
             <Plus className="w-4 h-4" />
             <span className="text-sm">New Snippet</span>
-          </button>
+          </motion.button>
         </div>
         <div className="flex-1 overflow-y-auto p-4">
           {snippets.length > 0 ? (
             <div className="grid grid-cols-1 gap-3">
-              {snippets.map((snippet) => (
-                <SnippetCard
-                  key={snippet.id}
-                  snippet={snippet}
-                  onClick={() => onSnippetClick(snippet)}
-                  onDelete={() => onDeleteSnippet(snippet.id)}
-                />
-              ))}
+              <AnimatePresence mode="popLayout">
+                {snippets.map((snippet, index) => (
+                  <motion.div
+                    key={snippet.id}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: 20 }}
+                    transition={{ duration: 0.3, delay: index * 0.05 }}
+                  >
+                    <SnippetCard
+                      snippet={snippet}
+                      onClick={() => onSnippetClick(snippet)}
+                      onDelete={() => onDeleteSnippet(snippet.id)}
+                    />
+                  </motion.div>
+                ))}
+              </AnimatePresence>
             </div>
           ) : (
-            <div className="flex flex-col items-center justify-center h-full text-center p-8">
-              <Layers className="w-16 h-16 text-muted mb-4" />
-              <p className="text-secondary font-semibold mb-2">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.4 }}
+              className="flex flex-col items-center justify-center h-full text-center p-8"
+            >
+              <motion.div
+                initial={{ scale: 0.8 }}
+                animate={{ scale: 1 }}
+                transition={{ duration: 0.5, delay: 0.2 }}
+              >
+                <Layers className="w-16 h-16 text-muted mb-4" />
+              </motion.div>
+              <motion.p
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, delay: 0.3 }}
+                className="text-secondary font-semibold mb-2"
+              >
                 No snippets yet
-              </p>
-              <p className="text-muted text-sm">
+              </motion.p>
+              <motion.p
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, delay: 0.4 }}
+                className="text-muted text-sm"
+              >
                 Capture moments from your whiteboard session to save and review
                 later
-              </p>
-            </div>
+              </motion.p>
+            </motion.div>
           )}
         </div>
       </div>
-    </aside>
+    </motion.aside>
   </>
 );
 
@@ -471,15 +585,23 @@ const SidebarToggle: React.FC<{ onClick: () => void; isOpen: boolean }> = ({
   onClick,
   isOpen,
 }) => (
-  <button
-    onClick={onClick}
-    className={`fixed top-1/2 -translate-y-1/2 z-30 bg-page/90 backdrop-blur-sm hover:bg-hover text-primary px-3 py-6 rounded-l-lg shadow-xl border border-selected border-r-0 transition-all duration-300 group cursor-pointer outline-none focus:outline-none focus:ring-0 focus-visible:outline-none ${
-      isOpen ? "right-80 lg:right-96 opacity-0 pointer-events-none" : "right-0"
-    }`}
-    aria-label="Toggle sidebar"
-  >
-    <ChevronLeft className="w-5 h-5 group-hover:scale-110 transition-transform" />
-  </button>
+  <AnimatePresence>
+    {!isOpen && (
+      <motion.button
+        initial={{ x: 100, opacity: 0 }}
+        animate={{ x: 0, opacity: 1 }}
+        exit={{ x: 100, opacity: 0 }}
+        transition={{ duration: 0.3 }}
+        whileHover={{ scale: 1.05 }}
+        whileTap={{ scale: 0.95 }}
+        onClick={onClick}
+        className="fixed top-1/2 -translate-y-1/2 right-0 z-30 bg-page/90 backdrop-blur-sm hover:bg-hover text-primary px-3 py-6 rounded-l-lg shadow-xl border border-selected border-r-0 transition-all duration-300 group cursor-pointer outline-none focus:outline-none focus:ring-0 focus-visible:outline-none"
+        aria-label="Toggle sidebar"
+      >
+        <ChevronLeft className="w-5 h-5 group-hover:scale-110 transition-transform" />
+      </motion.button>
+    )}
+  </AnimatePresence>
 );
 
 const Room: React.FC = () => {
