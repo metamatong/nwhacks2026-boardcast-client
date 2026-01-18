@@ -250,19 +250,31 @@ const HostView: React.FC = () => {
     }
   }, [isStreaming]);
 
-  // Auto-start stream on mount with delay for mobile
+  // Auto-start stream on mount (desktop only, mobile requires user gesture)
   useEffect(() => {
-    // Small delay to ensure DOM is ready on mobile
-    const timer = setTimeout(() => {
-      startStream();
-    }, 100);
+    // Check if mobile device
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
     
-    return () => {
-      clearTimeout(timer);
-      const s = videoRef.current?.srcObject as MediaStream | null;
-      if (s) s.getTracks().forEach((t) => t.stop());
-      attachStream(null);
-    };
+    if (!isMobile) {
+      // Desktop: auto-start
+      const timer = setTimeout(() => {
+        startStream();
+      }, 100);
+      
+      return () => {
+        clearTimeout(timer);
+        const s = videoRef.current?.srcObject as MediaStream | null;
+        if (s) s.getTracks().forEach((t) => t.stop());
+        attachStream(null);
+      };
+    } else {
+      // Mobile: wait for user gesture
+      return () => {
+        const s = videoRef.current?.srcObject as MediaStream | null;
+        if (s) s.getTracks().forEach((t) => t.stop());
+        attachStream(null);
+      };
+    }
   }, [startStream]);
 
   // Run whiteboard detection periodically
