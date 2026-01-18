@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Copy, Check } from "lucide-react";
 
 export default function CreateRoomPage() {
-  const [title] = useState("My Awesome Room"); // example title
+  const [title] = useState("My Awesome Room");
   const [roomCode] = useState(generateRoomCode());
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -31,7 +31,7 @@ export default function CreateRoomPage() {
   const onCopyCode = () => {
     navigator.clipboard.writeText(roomCode);
     setCopied(true);
-    setTimeout(() => setCopied(false), 1500); // reset after 1.5s
+    setTimeout(() => setCopied(false), 1500);
   };
 
   return (
@@ -47,8 +47,12 @@ export default function CreateRoomPage() {
       <div className="w-full max-w-md relative z-10">
         {/* Heading */}
         <div className="mb-4 text-center">
-          <h1 className="text-6xl font-bold text-primary mb-2">Room Created!</h1>
-          <p className="text-secondary">Set your room title and invite others</p>
+          <h1 className="text-6xl font-bold text-primary mb-2">
+            Room Created!
+          </h1>
+          <p className="text-secondary">
+            Set your room title and invite others
+          </p>
         </div>
 
         {/* Card */}
@@ -78,7 +82,7 @@ export default function CreateRoomPage() {
                   {copied ? (
                     <Check className="w-4 h-4 text-primary" />
                   ) : (
-                    <Copy className="w-4 h-4 text-secondary group-hover:text-primary transition-colors" />
+                    <Copy className="w-4 h-4 text-primary group-hover:text-primary transition-colors" />
                   )}
                 </button>
               </div>
@@ -110,7 +114,8 @@ export default function CreateRoomPage() {
         {/* Footer text */}
         <div className="mt-3 text-center">
           <p className="text-xs text-muted leading-relaxed">
-            Transform physical whiteboards into live, collaborative digital pages. Capture, stream, and save in real time.
+            Transform physical whiteboards into live, collaborative digital
+            pages. Capture, stream, and save in real time.
           </p>
         </div>
       </div>
