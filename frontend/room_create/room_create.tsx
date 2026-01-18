@@ -143,10 +143,12 @@ export default function RoomCreatePage() {
             transition={{ duration: 0.5, delay: 0.8 }}
             className="bg-background/50 border border-primary/30 rounded-lg p-4 space-y-2.5 text-sm shadow-sm"
           >
-            {["• Keep this tab open while streaming your board.",
+            {[
+              "• Keep this tab open while streaming your board.",
               "• Ensure your phone sits securely before starting.",
               "• The whole whiteboard should be captured on camera.",
-              "• Share the room code with others."].map((tip, index) => (
+              "• Share the room code with others.",
+            ].map((tip, index) => (
               <motion.p
                 key={index}
                 initial={{ opacity: 0, x: -10 }}

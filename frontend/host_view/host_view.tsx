@@ -28,7 +28,7 @@ const HostView: React.FC = () => {
   const [detectedRect, setDetectedRect] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
   
   // Get room details from URL parameters
-  const roomCode = searchParams.get("id") || "ABC-123-XYZ";
+  const roomCode = searchParams.get("id") || "ABC 123";
   const roomName = searchParams.get("title") || "Untitled Board";
   
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -313,10 +313,7 @@ const HostView: React.FC = () => {
           />
 
           {/* Hidden canvas for detection */}
-          <canvas
-            ref={canvasRef}
-            className="hidden"
-          />
+          <canvas ref={canvasRef} className="hidden" />
 
           {/* Whiteboard detection overlay */}
           <AnimatePresence>
@@ -332,7 +329,7 @@ const HostView: React.FC = () => {
                   top: `${(detectedRect.y / (canvasRef.current?.height || 1)) * 100}%`,
                   width: `${(detectedRect.width / (canvasRef.current?.width || 1)) * 100}%`,
                   height: `${(detectedRect.height / (canvasRef.current?.height || 1)) * 100}%`,
-                  boxShadow: '0 0 0 9999px rgba(0, 0, 0, 0.3)',
+                  boxShadow: "0 0 0 9999px rgba(0, 0, 0, 0.3)",
                 }}
               >
                 <motion.div
@@ -378,11 +375,11 @@ const HostView: React.FC = () => {
           >
             <span className="text-xs text-muted">Room Code:</span>
             <code className="text-xs font-mono text-secondary font-semibold tracking-widest">
-              {roomCode}
+              {roomCode.slice(0, 3) + " " + roomCode.slice(3, 6)}
             </code>
           </motion.div>
         </div>
-        
+
         {/* Help Button */}
         {!noStream && (
           <motion.button
@@ -427,8 +424,12 @@ const HostView: React.FC = () => {
                 transition={{ duration: 0.5, delay: 0.3 }}
                 className="space-y-2"
               >
-                <p className="text-secondary text-lg font-semibold">No Camera Stream</p>
-                <p className="text-muted text-sm">Tap anywhere to start streaming</p>
+                <p className="text-secondary text-lg font-semibold">
+                  No Camera Stream
+                </p>
+                <p className="text-muted text-sm">
+                  Tap anywhere to start streaming
+                </p>
               </motion.div>
             </div>
           </motion.div>
@@ -445,86 +446,89 @@ const HostView: React.FC = () => {
             transition={{ duration: 0.5 }}
             className="absolute bottom-8 left-0 right-0 flex items-center justify-center gap-4 px-6 z-10"
           >
-          {/* Participants Button with Avatars */}
-          <motion.button
-            initial={{ x: -50, opacity: 0 }}
-            animate={{ x: 0, opacity: 1 }}
-            transition={{ duration: 0.4, delay: 0.1 }}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={(e) => {
-              e.stopPropagation();
-              handleViewParticipants();
-            }}
-            className="px-4 h-16 relative rounded-full border border-selected flex items-center justify-center shadow-xl cursor-pointer overflow-visible transition-transform backdrop-blur-sm"
-            aria-label="View Participants"
-            style={{
-              backgroundColor: "rgba(30, 30, 30, 0.8)",
-              backgroundImage: "radial-gradient(circle, rgba(150,150,150,0.15) 1.5px, transparent 1.5px)",
-              backgroundSize: "24px 24px",
-            }}
-          >
-            <div className="flex -space-x-2">
-              {participants.slice(0, 3).map((participant, idx) => (
-                <div
-                  key={participant.id}
-                  className={`w-8 h-8 rounded-full ${participant.color} border-2 border-page flex items-center justify-center text-xs font-bold text-white shadow-sm`}
-                  style={{ zIndex: 3 - idx }}
-                  title={participant.name}
-                >
-                  {participant.name.charAt(0)}
-                </div>
-              ))}
-            </div>
-            <span className="absolute inset-0 bg-white opacity-0 hover:opacity-5 transition-opacity rounded-full pointer-events-none" />
-          </motion.button>
+            {/* Participants Button with Avatars */}
+            <motion.button
+              initial={{ x: -50, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              transition={{ duration: 0.4, delay: 0.1 }}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleViewParticipants();
+              }}
+              className="px-4 h-16 relative rounded-full border border-selected flex items-center justify-center shadow-xl cursor-pointer overflow-visible transition-transform backdrop-blur-sm"
+              aria-label="View Participants"
+              style={{
+                backgroundColor: "rgba(30, 30, 30, 0.8)",
+                backgroundImage:
+                  "radial-gradient(circle, rgba(150,150,150,0.15) 1.5px, transparent 1.5px)",
+                backgroundSize: "24px 24px",
+              }}
+            >
+              <div className="flex -space-x-2">
+                {participants.slice(0, 3).map((participant, idx) => (
+                  <div
+                    key={participant.id}
+                    className={`w-8 h-8 rounded-full ${participant.color} border-2 border-page flex items-center justify-center text-xs font-bold text-white shadow-sm`}
+                    style={{ zIndex: 3 - idx }}
+                    title={participant.name}
+                  >
+                    {participant.name.charAt(0)}
+                  </div>
+                ))}
+              </div>
+              <span className="absolute inset-0 bg-white opacity-0 hover:opacity-5 transition-opacity rounded-full pointer-events-none" />
+            </motion.button>
 
-          {/* End Stream Button */}
-          <motion.button
-            initial={{ y: 50, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ duration: 0.4, delay: 0.2 }}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={(e) => {
-              e.stopPropagation();
-              handleEndStream();
-            }}
-            className="w-20 h-20 relative rounded-full border border-selected flex items-center justify-center shadow-xl cursor-pointer overflow-hidden transition-transform backdrop-blur-sm"
-            aria-label="End Stream"
-            style={{
-              backgroundColor: "rgba(30, 30, 30, 0.8)",
-              backgroundImage: "radial-gradient(circle, rgba(150,150,150,0.15) 1.5px, transparent 1.5px)",
-              backgroundSize: "24px 24px",
-            }}
-          >
-            <X className="w-7 h-7 text-primary" />
-            <span className="absolute inset-0 bg-white opacity-0 hover:opacity-5 transition-opacity rounded-full pointer-events-none" />
-          </motion.button>
+            {/* End Stream Button */}
+            <motion.button
+              initial={{ y: 50, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ duration: 0.4, delay: 0.2 }}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleEndStream();
+              }}
+              className="w-20 h-20 relative rounded-full border border-selected flex items-center justify-center shadow-xl cursor-pointer overflow-hidden transition-transform backdrop-blur-sm"
+              aria-label="End Stream"
+              style={{
+                backgroundColor: "rgba(30, 30, 30, 0.8)",
+                backgroundImage:
+                  "radial-gradient(circle, rgba(150,150,150,0.15) 1.5px, transparent 1.5px)",
+                backgroundSize: "24px 24px",
+              }}
+            >
+              <X className="w-7 h-7 text-primary" />
+              <span className="absolute inset-0 bg-white opacity-0 hover:opacity-5 transition-opacity rounded-full pointer-events-none" />
+            </motion.button>
 
-          {/* Flip Camera Button */}
-          <motion.button
-            initial={{ x: 50, opacity: 0 }}
-            animate={{ x: 0, opacity: 1 }}
-            transition={{ duration: 0.4, delay: 0.1 }}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={(e) => {
-              e.stopPropagation();
-              handleFlipCamera();
-            }}
-            className="w-16 h-16 relative rounded-full border border-selected flex items-center justify-center shadow-xl cursor-pointer overflow-hidden transition-transform backdrop-blur-sm"
-            aria-label="Flip Camera"
-            style={{
-              backgroundColor: "rgba(30, 30, 30, 0.8)",
-              backgroundImage: "radial-gradient(circle, rgba(150,150,150,0.15) 1.5px, transparent 1.5px)",
-              backgroundSize: "24px 24px",
-            }}
-          >
-            <SwitchCamera className="w-6 h-6 text-primary" />
-            <span className="absolute inset-0 bg-white opacity-0 hover:opacity-5 transition-opacity rounded-full pointer-events-none" />
-          </motion.button>
-        </motion.div>
+            {/* Flip Camera Button */}
+            <motion.button
+              initial={{ x: 50, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              transition={{ duration: 0.4, delay: 0.1 }}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleFlipCamera();
+              }}
+              className="w-16 h-16 relative rounded-full border border-selected flex items-center justify-center shadow-xl cursor-pointer overflow-hidden transition-transform backdrop-blur-sm"
+              aria-label="Flip Camera"
+              style={{
+                backgroundColor: "rgba(30, 30, 30, 0.8)",
+                backgroundImage:
+                  "radial-gradient(circle, rgba(150,150,150,0.15) 1.5px, transparent 1.5px)",
+                backgroundSize: "24px 24px",
+              }}
+            >
+              <SwitchCamera className="w-6 h-6 text-primary" />
+              <span className="absolute inset-0 bg-white opacity-0 hover:opacity-5 transition-opacity rounded-full pointer-events-none" />
+            </motion.button>
+          </motion.div>
         )}
       </AnimatePresence>
 
@@ -550,34 +554,41 @@ const HostView: React.FC = () => {
               className="bg-page rounded-xl border border-selected p-6 max-w-md w-full space-y-4"
               onClick={(e) => e.stopPropagation()}
             >
-            <div className="flex items-center justify-between">
-              <h2 className="text-xl font-bold text-primary">Participants</h2>
-              <button
-                onClick={() => setShowParticipants(false)}
-                className="w-8 h-8 rounded-full hover:bg-background flex items-center justify-center transition-colors"
-              >
-                <X className="w-5 h-5 text-muted" />
-              </button>
-            </div>
-            
-            <div className="space-y-2">
-              <div className="flex items-center gap-3 p-3 bg-background rounded-lg">
-                <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
-                  <Users className="w-5 h-5 text-primary" />
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-bold text-primary">Participants</h2>
+                <button
+                  onClick={() => setShowParticipants(false)}
+                  className="w-8 h-8 rounded-full hover:bg-background flex items-center justify-center transition-colors"
+                >
+                  <X className="w-5 h-5 text-muted" />
+                </button>
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center gap-3 p-3 bg-background rounded-lg">
+                  <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
+                    <Users className="w-5 h-5 text-primary" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-semibold text-primary">
+                      You (Host)
+                    </p>
+                    <p className="text-xs text-muted">Streaming</p>
+                  </div>
                 </div>
-                <div className="flex-1">
-                  <p className="text-sm font-semibold text-primary">You (Host)</p>
-                  <p className="text-xs text-muted">Streaming</p>
+
+                <div className="text-center py-8">
+                  <p className="text-sm text-muted">
+                    No other participants yet
+                  </p>
+                  <p className="text-xs text-muted mt-1">
+                    Share room code:{" "}
+                    <span className="font-mono text-secondary">{roomCode}</span>
+                  </p>
                 </div>
               </div>
-              
-              <div className="text-center py-8">
-                <p className="text-sm text-muted">No other participants yet</p>
-                <p className="text-xs text-muted mt-1">Share room code: <span className="font-mono text-secondary">{roomCode}</span></p>
-              </div>
-            </div>
+            </motion.div>
           </motion.div>
-        </motion.div>
         )}
       </AnimatePresence>
 
@@ -603,59 +614,63 @@ const HostView: React.FC = () => {
               className="bg-page rounded-xl border border-selected p-6 max-w-md w-full space-y-4 max-h-[80vh] overflow-y-auto"
               onClick={(e) => e.stopPropagation()}
             >
-            <div className="flex items-center justify-between">
-              <h2 className="text-xl font-bold text-primary">Stream Quality Tips</h2>
-              <button
-                onClick={() => setShowHelp(false)}
-                className="w-8 h-8 rounded-full hover:bg-background flex items-center justify-center transition-colors"
-              >
-                <X className="w-5 h-5 text-muted" />
-              </button>
-            </div>
-            
-            <div className="space-y-4 text-sm">
-              <div className="bg-background/50 border border-primary/30 rounded-lg p-4 space-y-2">
-                <h3 className="font-semibold text-primary">📱 Camera Setup</h3>
-                <ul className="space-y-1.5 text-muted">
-                  <li>• Use a phone stand or tripod for stability</li>
-                  <li>• Position camera directly above the whiteboard</li>
-                  <li>• Ensure the entire board is visible in frame</li>
-                  <li>• Keep camera at least 2-3 feet from the board</li>
-                </ul>
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-bold text-primary">
+                  Stream Quality Tips
+                </h2>
+                <button
+                  onClick={() => setShowHelp(false)}
+                  className="w-8 h-8 rounded-full hover:bg-background flex items-center justify-center transition-colors"
+                >
+                  <X className="w-5 h-5 text-muted" />
+                </button>
               </div>
 
-              <div className="bg-background/50 border border-primary/30 rounded-lg p-4 space-y-2">
-                <h3 className="font-semibold text-primary">💡 Lighting</h3>
-                <ul className="space-y-1.5 text-muted">
-                  <li>• Use bright, even lighting across the board</li>
-                  <li>• Avoid direct sunlight causing glare</li>
-                  <li>• Position lights to minimize shadows</li>
-                  <li>• Turn on overhead lights if available</li>
-                </ul>
-              </div>
+              <div className="space-y-4 text-sm">
+                <div className="bg-background/50 border border-primary/30 rounded-lg p-4 space-y-2">
+                  <h3 className="font-semibold text-primary">
+                    📱 Camera Setup
+                  </h3>
+                  <ul className="space-y-1.5 text-muted">
+                    <li>• Use a phone stand or tripod for stability</li>
+                    <li>• Position camera directly above the whiteboard</li>
+                    <li>• Ensure the entire board is visible in frame</li>
+                    <li>• Keep camera at least 2-3 feet from the board</li>
+                  </ul>
+                </div>
 
-              <div className="bg-background/50 border border-primary/30 rounded-lg p-4 space-y-2">
-                <h3 className="font-semibold text-primary">🌐 Connection</h3>
-                <ul className="space-y-1.5 text-muted">
-                  <li>• Use WiFi instead of cellular data if possible</li>
-                  <li>• Close other apps to free up bandwidth</li>
-                  <li>• Stay close to your WiFi router</li>
-                  <li>• Restart the stream if quality degrades</li>
-                </ul>
-              </div>
+                <div className="bg-background/50 border border-primary/30 rounded-lg p-4 space-y-2">
+                  <h3 className="font-semibold text-primary">💡 Lighting</h3>
+                  <ul className="space-y-1.5 text-muted">
+                    <li>• Use bright, even lighting across the board</li>
+                    <li>• Avoid direct sunlight causing glare</li>
+                    <li>• Position lights to minimize shadows</li>
+                    <li>• Turn on overhead lights if available</li>
+                  </ul>
+                </div>
 
-              <div className="bg-background/50 border border-primary/30 rounded-lg p-4 space-y-2">
-                <h3 className="font-semibold text-primary">✏️ Board Tips</h3>
-                <ul className="space-y-1.5 text-muted">
-                  <li>• Use dark markers for better contrast</li>
-                  <li>• Clean the board before starting</li>
-                  <li>• Write larger than usual for clarity</li>
-                  <li>• Avoid standing in front of the camera</li>
-                </ul>
+                <div className="bg-background/50 border border-primary/30 rounded-lg p-4 space-y-2">
+                  <h3 className="font-semibold text-primary">🌐 Connection</h3>
+                  <ul className="space-y-1.5 text-muted">
+                    <li>• Use WiFi instead of cellular data if possible</li>
+                    <li>• Close other apps to free up bandwidth</li>
+                    <li>• Stay close to your WiFi router</li>
+                    <li>• Restart the stream if quality degrades</li>
+                  </ul>
+                </div>
+
+                <div className="bg-background/50 border border-primary/30 rounded-lg p-4 space-y-2">
+                  <h3 className="font-semibold text-primary">✏️ Board Tips</h3>
+                  <ul className="space-y-1.5 text-muted">
+                    <li>• Use dark markers for better contrast</li>
+                    <li>• Clean the board before starting</li>
+                    <li>• Write larger than usual for clarity</li>
+                    <li>• Avoid standing in front of the camera</li>
+                  </ul>
+                </div>
               </div>
-            </div>
+            </motion.div>
           </motion.div>
-        </motion.div>
         )}
       </AnimatePresence>
     </div>
