@@ -104,22 +104,20 @@ export default function NoteOptions() {
       }}
     >
       <div className="max-w-md w-full z-10">
+        <h1 className="text-4xl md:text-5xl font-bold text-primary mb-2 text-center">
+          Notes Saved!
+        </h1>
+        <p className="text-sm md:text-base text-secondary text-center mb-2">
+          Sign in to download, share, or save your notes as a PDF.
+        </p>
+        <div className="text-[11px] text-muted mb-4 text-center">
+          Session snapshot captured just now — nothing will be lost.
+        </div>
         <div className="bg-page rounded-xl border border-selected p-6 shadow-lg text-center">
-          <h1 className="text-4xl md:text-5xl font-bold text-primary mb-2">
-            Notes Saved!
-          </h1>
-          <p className="text-sm md:text-base text-secondary mb-3">
-            Sign in to download, share, or save your notes as a PDF.
-          </p>
-
-          <div className="text-[11px] text-muted mb-3">
-            Session snapshot captured just now — nothing will be lost.
-          </div>
-
           <img
             src="/digital_board_example.png"
             alt="Preview"
-            className="max-w-full rounded-lg border border-selected mt-2 mb-4"
+            className="max-w-full rounded-lg border border-selected mb-4"
           />
 
           <div className="flex flex-row justify-center gap-6 mb-3">
