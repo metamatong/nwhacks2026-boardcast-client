@@ -33,14 +33,13 @@ const HostView: React.FC = () => {
     }
   };
 
-  // Start camera stream safely with environment preference and fallback
+  // Start camera stream safely
   const startStream = useCallback(async () => {
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
       alert("Camera not supported. Use HTTPS/localhost and allow camera access.");
       return;
     }
 
-    // Stop any existing stream first
     const current = videoRef.current?.srcObject as MediaStream | null;
     if (current) current.getTracks().forEach((t) => t.stop());
 
@@ -61,7 +60,6 @@ const HostView: React.FC = () => {
         stream = await navigator.mediaDevices.getUserMedia(constraintsIdeal);
       }
 
-      // Bind end events so UI updates when camera is revoked
       stream.getVideoTracks().forEach((track) => {
         track.onended = () => {
           setIsStreaming(false);
@@ -83,7 +81,7 @@ const HostView: React.FC = () => {
     }
   }, []);
 
-  // Auto-prompt on mount (some browsers allow; others require gesture)
+  // Auto-start stream on mount
   useEffect(() => {
     startStream();
     return () => {
@@ -93,7 +91,6 @@ const HostView: React.FC = () => {
     };
   }, [startStream]);
 
-  // Capture first user gesture to ensure autoplay on iOS if needed
   const handleUserGesture = useCallback(() => {
     if (!userGestureCaptured.current && !isStreaming) {
       userGestureCaptured.current = true;
@@ -119,7 +116,7 @@ const HostView: React.FC = () => {
     if (!track) return;
     const nextEnabled = !track.enabled;
     track.enabled = nextEnabled;
-    setIsPaused(!nextEnabled); // disabled => paused
+    setIsPaused(!nextEnabled);
     console.log(nextEnabled ? "Stream resumed" : "Stream paused");
   }, []);
 
@@ -127,7 +124,6 @@ const HostView: React.FC = () => {
     const video = videoRef.current;
     if (!video || !isStreaming) return;
 
-    // Snapshot to download (minimal behavior)
     const canvas = document.createElement("canvas");
     const w = video.videoWidth || 1280;
     const h = video.videoHeight || 720;
@@ -149,7 +145,6 @@ const HostView: React.FC = () => {
       }, "image/jpeg", 0.9);
     }
 
-    // Subtle flash
     const flash = document.getElementById("camera-flash");
     if (flash) {
       flash.classList.remove("opacity-0");
@@ -174,7 +169,7 @@ const HostView: React.FC = () => {
           : undefined
       }
     >
-      {/* Camera Stream or Waiting State */}
+      {/* Camera Stream */}
       {!noStream && (
         <>
           <video
@@ -203,12 +198,12 @@ const HostView: React.FC = () => {
         </>
       )}
 
-      {/* Top Bar - Room Info (minimal) */}
+      {/* Top Bar */}
       <div className="absolute top-0 left-0 right-0 p-4 bg-gradient-to-b from-background/70 to-transparent backdrop-blur-sm z-10">
         <div className="text-center space-y-1">
           <h1 className="text-lg font-bold text-primary">{roomName}</h1>
           <div className="flex items-center justify-center gap-2">
-            <span className="text-xs text-muted">Room:</span>
+            <span className="text-xs text-muted">Room Code:</span>
             <code className="text-xs font-mono text-secondary font-semibold tracking-widest">
               {roomCode}
             </code>
@@ -216,7 +211,7 @@ const HostView: React.FC = () => {
         </div>
       </div>
 
-      {/* Center waiting state */}
+      {/* Waiting State */}
       {noStream && (
         <div className="absolute inset-0 flex items-center justify-center z-10">
           <div className="text-center space-y-6 p-8">
@@ -229,36 +224,44 @@ const HostView: React.FC = () => {
         </div>
       )}
 
-      {/* Bottom Controls (3 minimal grey buttons) */}
+      {/* Bottom Controls with Dots */}
       {!noStream && (
         <div className="absolute bottom-8 left-0 right-0 flex items-center justify-center gap-4 px-6 z-10">
-          <button
-            onClick={handleTogglePause}
-            className="w-16 h-16 rounded-full bg-hover backdrop-blur-sm border border-selected hover:border-primary transition-all flex items-center justify-center shadow-xl cursor-pointer active:scale-95"
-            aria-label={isPaused ? "Resume" : "Pause"}
-          >
-            {isPaused ? (
-              <Play className="w-6 h-6 text-primary" />
-            ) : (
-              <Pause className="w-6 h-6 text-primary" />
-            )}
-          </button>
-
-          <button
-            onClick={handleCapture}
-            className="w-20 h-20 rounded-full bg-hover backdrop-blur-sm border-2 border-selected hover:border-primary transition-all flex items-center justify-center shadow-xl cursor-pointer active:scale-95"
-            aria-label="Capture snapshot"
-          >
-            <Camera className="w-7 h-7 text-primary" />
-          </button>
-
-          <button
-            onClick={handleEndStream}
-            className="w-16 h-16 rounded-full bg-hover backdrop-blur-sm border border-selected hover:border-red-500 transition-all flex items-center justify-center shadow-xl cursor-pointer active:scale-95"
-            aria-label="End stream"
-          >
-            <X className="w-6 h-6 text-primary" />
-          </button>
+          {[
+            {
+              onClick: handleTogglePause,
+              icon: isPaused ? <Play className="w-6 h-6 text-primary" /> : <Pause className="w-6 h-6 text-primary" />,
+              label: isPaused ? "Resume" : "Pause",
+              size: "w-16 h-16",
+            },
+            {
+              onClick: handleCapture,
+              icon: <Camera className="w-7 h-7 text-primary" />,
+              label: "Capture snapshot",
+              size: "w-20 h-20",
+            },
+            {
+              onClick: handleEndStream,
+              icon: <X className="w-6 h-6 text-primary" />,
+              label: "End stream",
+              size: "w-16 h-16",
+            },
+          ].map((btn, i) => (
+            <a
+              key={i}
+              onClick={btn.onClick}
+              className={`${btn.size} relative rounded-full border border-selected flex items-center justify-center shadow-xl cursor-pointer active:scale-95 overflow-hidden`}
+              aria-label={btn.label}
+              style={{
+                backgroundColor: "rgba(255,255,255,0.05)", // semi-transparent base
+                backgroundImage: "radial-gradient(circle, rgba(150,150,150,0.15) 1.5px, transparent 1.5px)",
+                backgroundSize: "24px 24px",
+              }}
+            >
+              {btn.icon}
+              <span className="absolute inset-0 bg-white opacity-0 hover:opacity-5 transition-opacity rounded-full pointer-events-none" />
+            </a>
+          ))}
         </div>
       )}
     </div>
