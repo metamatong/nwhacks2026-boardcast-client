@@ -72,38 +72,13 @@ export default function Landing() {
   const isFormValid =
     mode === "join" ? roomCode.trim() && roomTitle.trim() : roomTitle.trim();
 
-    const handleClearCanvas = () => {
-      const canvas = document.querySelector("canvas") as HTMLCanvasElement;
-      if (!canvas) return;
+  const handleClearCanvas = () => {
+    const canvas = document.querySelector("canvas") as HTMLCanvasElement;
+    if (!canvas) return;
 
-      const ctx = canvas.getContext("2d");
-      if (!ctx) return;
-
-      // Clear everything
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      // Redraw the grid
-      const dotSize = 1.5;
-      const spacing = 40;
-
-      const patternCanvas = document.createElement("canvas");
-      patternCanvas.width = spacing;
-      patternCanvas.height = spacing;
-
-      const pctx = patternCanvas.getContext("2d");
-      if (!pctx) return;
-
-      pctx.fillStyle = "rgba(150,150,150,0.15)";
-      pctx.beginPath();
-      pctx.arc(spacing / 2, spacing / 2, dotSize, 0, Math.PI * 2);
-      pctx.fill();
-
-      const pattern = ctx.createPattern(patternCanvas, "repeat");
-      if (!pattern) return;
-
-      ctx.fillStyle = pattern;
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-    };    
+    const ctx = canvas.getContext("2d");
+    if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
+  };
 
   return (
     <div
@@ -203,7 +178,10 @@ export default function Landing() {
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               animate={{
-                backgroundColor: mode === "join" ? "rgba(255, 255, 255, 0.1)" : "rgba(0, 0, 0, 0.2)",
+                backgroundColor:
+                  mode === "join"
+                    ? "rgba(255, 255, 255, 0.1)"
+                    : "rgba(0, 0, 0, 0.2)",
                 scale: mode === "join" ? 1 : 0.98,
               }}
               transition={{ duration: 0.3 }}
@@ -221,7 +199,10 @@ export default function Landing() {
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               animate={{
-                backgroundColor: mode === "create" ? "rgba(255, 255, 255, 0.1)" : "rgba(0, 0, 0, 0.2)",
+                backgroundColor:
+                  mode === "create"
+                    ? "rgba(255, 255, 255, 0.1)"
+                    : "rgba(0, 0, 0, 0.2)",
                 scale: mode === "create" ? 1 : 0.98,
               }}
               transition={{ duration: 0.3 }}
@@ -266,7 +247,7 @@ export default function Landing() {
                   </label>
                   <input
                     type="text"
-                    placeholder="ABC 123"
+                    placeholder="ABC123"
                     value={roomCode}
                     onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
                     onKeyPress={(e) => e.key === "Enter" && handleSubmit()}
@@ -306,7 +287,11 @@ export default function Landing() {
                 >
                   <motion.div
                     animate={{ rotate: 360 }}
-                    transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                    transition={{
+                      duration: 1,
+                      repeat: Infinity,
+                      ease: "linear",
+                    }}
                     className="w-4 h-4 border-2 border-background border-t-transparent rounded-full"
                   />
                   <span>Connecting...</span>

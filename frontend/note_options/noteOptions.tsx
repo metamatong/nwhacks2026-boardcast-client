@@ -8,18 +8,24 @@ import {
   CheckCircleIcon,
 } from "@heroicons/react/24/outline";
 import { BsFiletypePdf } from "react-icons/bs";
+import { jsPDF } from "jspdf";
 
 type Action = "download" | "share" | "pdf" | null;
 
 export default function NoteOptions() {
-  const [hovered, setHovered] = useState<Action>(null); // controls helper text
-  const [clicked, setClicked] = useState<Action>(null); // controls showing check circle on click
+  const [hovered, setHovered] = useState<Action>(null);
+  const [clicked, setClicked] = useState<Action>(null);
+  const [shareMessage, setShareMessage] = useState<string>("");
   const timeoutRef = useRef<number | null>(null);
+  const shareTimeoutRef = useRef<number | null>(null);
 
   useEffect(() => {
     return () => {
       if (timeoutRef.current !== null) {
         clearTimeout(timeoutRef.current);
+      }
+      if (shareTimeoutRef.current !== null) {
+        clearTimeout(shareTimeoutRef.current);
       }
     };
   }, []);
@@ -29,8 +35,105 @@ export default function NoteOptions() {
   const handleFocus = (action: Action) => setHovered(action);
   const handleBlur = () => setHovered(null);
 
+  const downloadImage = () => {
+    const link = document.createElement("a");
+    link.href = "/digital_board_example.png";
+    link.download = `boardcast-notes-${Date.now()}.png`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const downloadPDF = async () => {
+    try {
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.src = "/digital_board_example.png";
+
+      await new Promise((resolve, reject) => {
+        img.onload = resolve;
+        img.onerror = reject;
+      });
+
+      const pdf = new jsPDF({
+        orientation: img.width > img.height ? "landscape" : "portrait",
+        unit: "px",
+        format: [img.width, img.height],
+      });
+
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+
+      const imgAspectRatio = img.width / img.height;
+      const pageAspectRatio = pageWidth / pageHeight;
+
+      let renderWidth, renderHeight;
+
+      if (imgAspectRatio > pageAspectRatio) {
+        renderWidth = pageWidth;
+        renderHeight = pageWidth / imgAspectRatio;
+      } else {
+        renderHeight = pageHeight;
+        renderWidth = pageHeight * imgAspectRatio;
+      }
+
+      const x = (pageWidth - renderWidth) / 2;
+      const y = (pageHeight - renderHeight) / 2;
+
+      pdf.addImage(img, "PNG", x, y, renderWidth, renderHeight);
+      pdf.save(`boardcast-notes-${Date.now()}.pdf`);
+    } catch (error) {
+      console.error("Error generating PDF:", error);
+    }
+  };
+
+  const shareNotes = async () => {
+    try {
+      const shareUrl = `${window.location.origin}/note_options`;
+
+      if (navigator.share) {
+        await navigator.share({
+          title: "Boardcast Notes",
+          text: "Check out my whiteboard notes from Boardcast!",
+          url: shareUrl,
+        });
+        setShareMessage("Shared successfully!");
+      } else {
+        await navigator.clipboard.writeText(shareUrl);
+        setShareMessage("Link copied to clipboard!");
+      }
+
+      if (shareTimeoutRef.current !== null) {
+        clearTimeout(shareTimeoutRef.current);
+      }
+      shareTimeoutRef.current = window.setTimeout(() => {
+        setShareMessage("");
+        shareTimeoutRef.current = null;
+      }, 3000);
+    } catch (error) {
+      console.error("Error sharing:", error);
+      setShareMessage("Unable to share");
+
+      if (shareTimeoutRef.current !== null) {
+        clearTimeout(shareTimeoutRef.current);
+      }
+      shareTimeoutRef.current = window.setTimeout(() => {
+        setShareMessage("");
+        shareTimeoutRef.current = null;
+      }, 3000);
+    }
+  };
+
   const handleClick = (action: Action) => {
-    if (clicked) return; // ignore while another action is in clicked state
+    if (clicked) return;
+
+    if (action === "download") {
+      downloadImage();
+    } else if (action === "pdf") {
+      downloadPDF();
+    } else if (action === "share") {
+      shareNotes();
+    }
 
     setClicked(action);
 
@@ -38,7 +141,6 @@ export default function NoteOptions() {
       clearTimeout(timeoutRef.current);
     }
 
-    // Show check circle for 1.5 seconds
     timeoutRef.current = window.setTimeout(() => {
       setClicked(null);
       timeoutRef.current = null;
@@ -71,13 +173,13 @@ export default function NoteOptions() {
         />
       </div>
 
-      {/* Always show the label (no hover-only visibility) */}
       <span className="text-xs text-secondary">{label}</span>
     </motion.button>
   );
 
-  const helperText =
-    hovered === "download"
+  const helperText = shareMessage
+    ? shareMessage
+    : hovered === "download"
       ? "Your notes will be saved in a high-quality format, ready to review offline."
       : hovered === "share"
         ? "Share a link so others can view your notes in real time."
@@ -101,38 +203,37 @@ export default function NoteOptions() {
         transition={{ duration: 0.6 }}
         className="max-w-md w-full z-10"
       >
+        <motion.h1
+          initial={{ y: -20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ duration: 0.6, delay: 0.2 }}
+          className="text-4xl md:text-5xl font-bold text-primary mb-2 text-center"
+        >
+          Notes Saved!
+        </motion.h1>
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.5, delay: 0.3 }}
+          className="text-sm md:text-base text-secondary mb-3 text-center"
+        >
+          Sign in to download, share, or save your notes as a PDF.
+        </motion.p>
+
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.5, delay: 0.4 }}
+          className="text-[11px] text-muted mb-3 text-center"
+        >
+          Session snapshot captured just now — nothing will be lost.
+        </motion.div>
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.6, delay: 0.1 }}
           className="bg-page rounded-xl border border-selected p-6 shadow-lg text-center"
         >
-          <motion.h1
-            initial={{ y: -20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ duration: 0.6, delay: 0.2 }}
-            className="text-4xl md:text-5xl font-bold text-primary mb-2"
-          >
-            Notes Saved!
-          </motion.h1>
-          <motion.p
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.5, delay: 0.3 }}
-            className="text-sm md:text-base text-secondary mb-3"
-          >
-            Sign in to download, share, or save your notes as a PDF.
-          </motion.p>
-
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.5, delay: 0.4 }}
-            className="text-[11px] text-muted mb-3"
-          >
-            Session snapshot captured just now — nothing will be lost.
-          </motion.div>
-
           <motion.img
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -183,9 +284,11 @@ export default function NoteOptions() {
               What happens when you sign in
             </p>
             <ul className="space-y-1 list-disc list-inside">
-              {["Keep a history of all your whiteboard captures.",
+              {[
+                "Keep a history of all your whiteboard captures.",
                 "Download high-quality images and PDFs of your notes.",
-                "Generate share links to send notes to your team."].map((item, index) => (
+                "Generate share links to send notes to your team.",
+              ].map((item, index) => (
                 <motion.li
                   key={index}
                   initial={{ opacity: 0, x: -10 }}
