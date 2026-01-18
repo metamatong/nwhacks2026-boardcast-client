@@ -12,11 +12,13 @@ interface Participant {
   color: string;
 }
 
-const MOCK_PARTICIPANTS: Participant[] = [
-  { id: "1", name: "You", color: "bg-blue-500" },
-  { id: "2", name: "Jane Smith", color: "bg-purple-500" },
-  { id: "3", name: "Bob Johnson", color: "bg-green-500" },
-];
+// ICE servers for WebRTC
+const ICE_SERVERS: RTCConfiguration = {
+  iceServers: [
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun1.l.google.com:19302' },
+  ],
+};
 
 const HostView: React.FC = () => {
   const searchParams = useSearchParams();
@@ -32,16 +34,51 @@ const HostView: React.FC = () => {
     width: number;
     height: number;
   } | null>(null);
+  const [webrtcStatus, setWebrtcStatus] = useState<string>('idle');
 
   // Get room details from URL parameters
   const roomCode = searchParams.get("id") || "ABC 123";
   const roomName = searchParams.get("title") || "Untitled Board";
 
+  // WebRTC peer connections (one per participant)
+  const peerConnectionsRef = useRef<Map<string, RTCPeerConnection>>(new Map());
+  const localStreamRef = useRef<MediaStream | null>(null);
+
+  // Handle incoming WebRTC signals
+  const handleWebRTCSignal = useCallback(async (signal: any) => {
+    const { type, from, sdp, candidate } = signal;
+    
+    // Get or create peer connection for this participant
+    let pc = peerConnectionsRef.current.get(from);
+    
+    if (!pc && type === 'webrtc-answer') {
+      console.log('No peer connection for answer from:', from);
+      return;
+    }
+
+    if (type === 'webrtc-answer' && pc) {
+      try {
+        await pc.setRemoteDescription(new RTCSessionDescription(sdp));
+        console.log('Set remote description (answer) from:', from);
+      } catch (error) {
+        console.error('Error setting remote description:', error);
+      }
+    } else if (type === 'webrtc-ice-candidate' && pc && candidate) {
+      try {
+        await pc.addIceCandidate(new RTCIceCandidate(candidate));
+        console.log('Added ICE candidate from:', from);
+      } catch (error) {
+        console.error('Error adding ICE candidate:', error);
+      }
+    }
+  }, []);
+
   // Connect to WebSocket and get real participants (HOST)
-  const { participants: wsParticipants, isConnected } = useRoomWebSocket({
+  const { participants: wsParticipants, isConnected, sendWebRTCSignal, getClientId } = useRoomWebSocket({
     joinCode: roomCode,
-    participantName: "Host", // Host name
-    isHost: true, // This is the host
+    participantName: "Host",
+    isHost: true,
+    onWebRTCSignal: handleWebRTCSignal,
   });
 
   // Map WebSocket participants to UI format
@@ -130,6 +167,7 @@ const HostView: React.FC = () => {
         });
 
         attachStream(stream);
+        localStreamRef.current = stream; // Store for WebRTC
         setIsStreaming(true);
         console.log("Stream started with facing mode:", targetMode);
       } catch (error) {
@@ -304,6 +342,97 @@ const HostView: React.FC = () => {
       }
     };
   }, [isStreaming, detectWhiteboard]);
+
+  // Create WebRTC peer connection for a new participant
+  const createPeerConnection = useCallback(async (participantId: string) => {
+    if (!localStreamRef.current) {
+      console.log('No local stream available for WebRTC');
+      return;
+    }
+
+    // Close existing connection if any
+    const existingPc = peerConnectionsRef.current.get(participantId);
+    if (existingPc) {
+      existingPc.close();
+    }
+
+    const pc = new RTCPeerConnection(ICE_SERVERS);
+    peerConnectionsRef.current.set(participantId, pc);
+
+    // Add local stream tracks to peer connection
+    localStreamRef.current.getTracks().forEach((track) => {
+      pc.addTrack(track, localStreamRef.current!);
+    });
+
+    // Handle ICE candidates
+    pc.onicecandidate = (event) => {
+      if (event.candidate) {
+        sendWebRTCSignal({
+          type: 'webrtc-ice-candidate',
+          candidate: event.candidate.toJSON(),
+          to: participantId,
+        });
+      }
+    };
+
+    // Handle connection state changes
+    pc.onconnectionstatechange = () => {
+      console.log(`WebRTC connection state with ${participantId}:`, pc.connectionState);
+      setWebrtcStatus(pc.connectionState);
+    };
+
+    // Create and send offer
+    try {
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+      
+      sendWebRTCSignal({
+        type: 'webrtc-offer',
+        sdp: pc.localDescription!,
+        to: participantId,
+      });
+      
+      console.log('Sent WebRTC offer to:', participantId);
+    } catch (error) {
+      console.error('Error creating offer:', error);
+    }
+  }, [sendWebRTCSignal]);
+
+  // When participants change, create peer connections for new ones
+  useEffect(() => {
+    if (!isStreaming || !isConnected || !localStreamRef.current) return;
+
+    const myClientId = getClientId();
+    
+    // Create peer connections for each participant (except self)
+    wsParticipants.forEach((participant) => {
+      if (participant.id !== myClientId && participant.role !== 'host') {
+        // Check if we already have a connection
+        if (!peerConnectionsRef.current.has(participant.id)) {
+          console.log('Creating peer connection for:', participant.name);
+          createPeerConnection(participant.id);
+        }
+      }
+    });
+
+    // Clean up connections for participants who left
+    peerConnectionsRef.current.forEach((pc, participantId) => {
+      const stillExists = wsParticipants.some(p => p.id === participantId);
+      if (!stillExists) {
+        console.log('Closing peer connection for departed participant:', participantId);
+        pc.close();
+        peerConnectionsRef.current.delete(participantId);
+      }
+    });
+  }, [wsParticipants, isStreaming, isConnected, createPeerConnection, getClientId]);
+
+  // Cleanup all peer connections on unmount
+  useEffect(() => {
+    return () => {
+      peerConnectionsRef.current.forEach((pc) => pc.close());
+      peerConnectionsRef.current.clear();
+    };
+  }, []);
 
   const handleUserGesture = useCallback(() => {
     if (!userGestureCaptured.current && !isStreaming) {

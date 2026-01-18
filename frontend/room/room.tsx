@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useRef, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -15,6 +15,14 @@ import {
   Plus,
 } from "lucide-react";
 import { useRoomWebSocket } from "@/frontend/hooks/useRoomWebSocket";
+
+// ICE servers for WebRTC
+const ICE_SERVERS: RTCConfiguration = {
+  iceServers: [
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun1.l.google.com:19302' },
+  ],
+};
 
 interface Snippet {
   id: string;
@@ -254,7 +262,12 @@ const Header: React.FC<{
   </motion.header>
 );
 
-const WhiteboardArea: React.FC = () => (
+const WhiteboardArea: React.FC<{
+  videoRef: React.RefObject<HTMLVideoElement | null>;
+  isConnected: boolean;
+  hasStream: boolean;
+  webrtcStatus: string;
+}> = ({ videoRef, isConnected, hasStream, webrtcStatus }) => (
   <div
     className="flex-1 bg-background flex items-center justify-center p-4 sm:p-6 lg:p-8 min-h-0 relative"
     style={{
@@ -266,42 +279,64 @@ const WhiteboardArea: React.FC = () => (
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.6, delay: 0.3 }}
-      className="w-full h-full max-w-6xl bg-page/50 backdrop-blur-sm border border-selected rounded-xl flex items-center justify-center shadow-xl"
+      className="w-full h-full max-w-6xl bg-page/50 backdrop-blur-sm border border-selected rounded-xl flex items-center justify-center shadow-xl overflow-hidden relative"
     >
-      <div className="text-center space-y-6 p-8">
-        <motion.div
-          initial={{ scale: 0.8, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          transition={{ duration: 0.5, delay: 0.5 }}
-          className="relative inline-block"
-        >
-          <Layers className="w-20 h-20 text-muted mx-auto" />
-          <div className="absolute -top-1 -right-1 w-3 h-3 bg-primary rounded-full animate-pulse" />
-        </motion.div>
-        <motion.div
-          initial={{ y: 20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ duration: 0.5, delay: 0.6 }}
-          className="space-y-2"
-        >
-          <p className="text-secondary text-lg font-semibold">
-            Whiteboard Ready
-          </p>
-          <p className="text-muted text-sm max-w-md">
-            Start sharing your screen or use whiteboard tools to collaborate in
-            real-time
-          </p>
-        </motion.div>
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.5, delay: 0.7 }}
-          className="flex items-center justify-center gap-2 text-xs text-muted"
-        >
-          <div className="w-2 h-2 bg-primary rounded-full animate-pulse" />
-          <span>Waiting for content...</span>
-        </motion.div>
-      </div>
+      {/* Video element for WebRTC stream */}
+      <video
+        ref={videoRef}
+        autoPlay
+        playsInline
+        muted={false}
+        className={`w-full h-full object-contain ${hasStream ? 'block' : 'hidden'}`}
+      />
+      
+      {!hasStream && (
+        // Show waiting state
+        <div className="text-center space-y-6 p-8">
+          <motion.div
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ duration: 0.5, delay: 0.5 }}
+            className="relative inline-block"
+          >
+            <Layers className="w-20 h-20 text-muted mx-auto" />
+            <div className="absolute -top-1 -right-1 w-3 h-3 bg-primary rounded-full animate-pulse" />
+          </motion.div>
+          <motion.div
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ duration: 0.5, delay: 0.6 }}
+            className="space-y-2"
+          >
+            <p className="text-secondary text-lg font-semibold">
+              {!isConnected ? "Connecting..." : webrtcStatus === 'connected' ? "Stream Starting..." : "Waiting for Host"}
+            </p>
+            <p className="text-muted text-sm max-w-md">
+              {!isConnected
+                ? "Establishing connection to the room..."
+                : webrtcStatus === 'connecting'
+                  ? "Establishing peer-to-peer connection..."
+                  : "The host will start streaming the whiteboard soon"}
+            </p>
+          </motion.div>
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.5, delay: 0.7 }}
+            className="flex items-center justify-center gap-2 text-xs text-muted"
+          >
+            <div className={`w-2 h-2 rounded-full animate-pulse ${
+              webrtcStatus === 'connected' ? 'bg-green-500' :
+              isConnected ? 'bg-blue-500' : 'bg-yellow-500'
+            }`} />
+            <span>
+              {webrtcStatus === 'connected' ? "WebRTC Connected" :
+               webrtcStatus === 'connecting' ? "WebRTC Connecting..." :
+               isConnected ? "Room Connected - Waiting for stream..." : "Connecting..."}
+            </span>
+          </motion.div>
+        </div>
+      )}
     </motion.div>
   </div>
 );
@@ -603,17 +638,118 @@ const Room: React.FC = () => {
   const [isRecording, setIsRecording] = useState(false);
   const [snippets, setSnippets] = useState(MOCK_SNIPPETS);
   const [showParticipants, setShowParticipants] = useState(false);
+  const [hasStream, setHasStream] = useState(false);
+  const [webrtcStatus, setWebrtcStatus] = useState<string>('idle');
 
   // Get room code from URL
   const roomCode = searchParams.get("id") || "ABC-123-XYZ";
   const title = searchParams.get("title") || "Untitled Board";
 
+  // WebRTC refs
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
+  const pendingCandidatesRef = useRef<RTCIceCandidateInit[]>([]);
+
+  // Handle incoming WebRTC signals
+  const handleWebRTCSignal = useCallback(async (signal: any) => {
+    const { type, from, sdp, candidate } = signal;
+    
+    if (type === 'webrtc-offer') {
+      // Received offer from host - create answer
+      try {
+        // Close existing connection if any
+        if (peerConnectionRef.current) {
+          peerConnectionRef.current.close();
+        }
+
+        const pc = new RTCPeerConnection(ICE_SERVERS);
+        peerConnectionRef.current = pc;
+
+        // Handle incoming tracks (video from host)
+        pc.ontrack = (event) => {
+          console.log('Received remote track:', event.track.kind);
+          if (videoRef.current && event.streams[0]) {
+            videoRef.current.srcObject = event.streams[0];
+            setHasStream(true);
+          }
+        };
+
+        // Handle ICE candidates
+        pc.onicecandidate = (event) => {
+          if (event.candidate) {
+            sendWebRTCSignal({
+              type: 'webrtc-ice-candidate',
+              candidate: event.candidate.toJSON(),
+              to: from,
+            });
+          }
+        };
+
+        // Handle connection state changes
+        pc.onconnectionstatechange = () => {
+          console.log('WebRTC connection state:', pc.connectionState);
+          setWebrtcStatus(pc.connectionState);
+          if (pc.connectionState === 'disconnected' || pc.connectionState === 'failed') {
+            setHasStream(false);
+          }
+        };
+
+        // Set remote description (offer)
+        await pc.setRemoteDescription(new RTCSessionDescription(sdp));
+
+        // Add any pending ICE candidates
+        for (const pendingCandidate of pendingCandidatesRef.current) {
+          await pc.addIceCandidate(new RTCIceCandidate(pendingCandidate));
+        }
+        pendingCandidatesRef.current = [];
+
+        // Create and send answer
+        const answer = await pc.createAnswer();
+        await pc.setLocalDescription(answer);
+
+        sendWebRTCSignal({
+          type: 'webrtc-answer',
+          sdp: pc.localDescription!,
+          to: from,
+        });
+
+        console.log('Sent WebRTC answer to host');
+      } catch (error) {
+        console.error('Error handling WebRTC offer:', error);
+      }
+    } else if (type === 'webrtc-ice-candidate' && candidate) {
+      // Add ICE candidate
+      const pc = peerConnectionRef.current;
+      if (pc && pc.remoteDescription) {
+        try {
+          await pc.addIceCandidate(new RTCIceCandidate(candidate));
+          console.log('Added ICE candidate from host');
+        } catch (error) {
+          console.error('Error adding ICE candidate:', error);
+        }
+      } else {
+        // Queue candidate if remote description not set yet
+        pendingCandidatesRef.current.push(candidate);
+      }
+    }
+  }, []);
+
   // Connect to WebSocket and get real participants
-  const { participants: wsParticipants, isConnected } = useRoomWebSocket({
+  const { participants: wsParticipants, isConnected, sendWebRTCSignal } = useRoomWebSocket({
     joinCode: roomCode,
-    participantName: "Participant", // You can get this from user input or auth
+    participantName: "Participant",
     isHost: false,
+    onWebRTCSignal: handleWebRTCSignal,
   });
+
+  // Cleanup peer connection on unmount
+  useEffect(() => {
+    return () => {
+      if (peerConnectionRef.current) {
+        peerConnectionRef.current.close();
+      }
+    };
+  }, []);
 
   // Map WebSocket participants to your UI format
   const participants: Participant[] = wsParticipants.map((p, index) => ({
@@ -703,7 +839,12 @@ const Room: React.FC = () => {
         onToggleParticipants={() => setShowParticipants((s) => !s)}
         onKickParticipant={handleKickParticipant}
       />
-      <WhiteboardArea />
+      <WhiteboardArea
+        videoRef={videoRef}
+        isConnected={isConnected}
+        hasStream={hasStream}
+        webrtcStatus={webrtcStatus}
+      />
       <ControlPanel
         onShareScreen={handleShareScreen}
         onStartRecording={handleStartRecording}

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 
 interface Participant {
   id: string;
@@ -7,18 +7,36 @@ interface Participant {
   joined_at: string;
 }
 
+interface WebRTCSignal {
+  type: 'webrtc-offer' | 'webrtc-answer' | 'webrtc-ice-candidate';
+  sdp?: RTCSessionDescriptionInit;
+  candidate?: RTCIceCandidateInit;
+  from: string;
+  to?: string;
+}
+
 interface UseRoomWebSocketProps {
   joinCode: string | null;
   participantName: string;
   isHost?: boolean;
+  onWebRTCSignal?: (signal: WebRTCSignal) => void;
 }
 
-export function useRoomWebSocket({ joinCode, participantName, isHost = false }: UseRoomWebSocketProps) {
+export function useRoomWebSocket({ joinCode, participantName, isHost = false, onWebRTCSignal }: UseRoomWebSocketProps) {
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [isConnected, setIsConnected] = useState(false);
   const [roomId, setRoomId] = useState<string | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
-  const clientId = useRef<string>(Math.random().toString(36).substring(7));
+  const clientIdRef = useRef<string>(Math.random().toString(36).substring(7));
+  const onWebRTCSignalRef = useRef(onWebRTCSignal);
+
+  // Keep callback ref updated
+  useEffect(() => {
+    onWebRTCSignalRef.current = onWebRTCSignal;
+  }, [onWebRTCSignal]);
+
+  // Get client ID
+  const getClientId = useCallback(() => clientIdRef.current, []);
 
   useEffect(() => {
     if (!joinCode || !participantName) return;
@@ -56,7 +74,7 @@ export function useRoomWebSocket({ joinCode, participantName, isHost = false }: 
           const message = {
             type: isHost ? 'create-room' : 'join-room',
             name: participantName,
-            client_id: clientId.current,
+            client_id: clientIdRef.current,
           };
 
           ws?.send(JSON.stringify(message));
@@ -65,7 +83,11 @@ export function useRoomWebSocket({ joinCode, participantName, isHost = false }: 
         // Step 4: Handle incoming messages
         ws.onmessage = (event) => {
           const msg = JSON.parse(event.data);
-          console.log('WebSocket message received:', msg);
+          
+          // Don't log WebRTC signals (too noisy)
+          if (!msg.type?.startsWith('webrtc-')) {
+            console.log('WebSocket message received:', msg);
+          }
 
           switch (msg.type) {
             case 'room-created':
@@ -83,12 +105,22 @@ export function useRoomWebSocket({ joinCode, participantName, isHost = false }: 
               setParticipants(msg.participants || []);
               break;
 
+            case 'webrtc-offer':
+            case 'webrtc-answer':
+            case 'webrtc-ice-candidate':
+              // Forward WebRTC signaling to callback
+              if (onWebRTCSignalRef.current && msg.from !== clientIdRef.current) {
+                onWebRTCSignalRef.current(msg as WebRTCSignal);
+              }
+              break;
+
             case 'error':
               console.error('WebSocket error:', msg.message);
               break;
 
             default:
-              console.log('Unknown message type:', msg.type);
+              // Silently ignore unknown message types
+              break;
           }
         };
 
@@ -121,18 +153,30 @@ export function useRoomWebSocket({ joinCode, participantName, isHost = false }: 
   }, [joinCode, participantName, isHost]);
 
   // Helper function to send custom messages
-  const sendMessage = (message: any) => {
+  const sendMessage = useCallback((message: any) => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify(message));
     } else {
       console.warn('WebSocket is not connected');
     }
-  };
+  }, []);
+
+  // Send WebRTC signaling message
+  const sendWebRTCSignal = useCallback((signal: Omit<WebRTCSignal, 'from'>) => {
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({
+        ...signal,
+        from: clientIdRef.current,
+      }));
+    }
+  }, []);
 
   return {
     participants,
     isConnected,
     roomId,
     sendMessage,
+    sendWebRTCSignal,
+    getClientId,
   };
 }
