@@ -158,9 +158,9 @@ export default function NoteOptions() {
       onClick={() => handleClick(action)}
       title={label}
       aria-label={label}
-      className="flex flex-col items-center gap-2 px-4 py-2 rounded-lg text-sm text-primary hover:text-blue-500 transition-colors cursor-pointer"
+      className="flex flex-col items-center gap-2 px-4 py-2 rounded-lg text-sm text-primary hover:text-blue-500 transition-colors cursor-pointer bg-background border border-selected mt-2"
     >
-      <div className="relative h-10 w-10 flex items-center justify-center shadow-sm">
+      <div className="relative h-8 w-12 flex items-center justify-center shadow-sm">
         <Icon
           className={`absolute h-6 w-6 transition-opacity duration-300 ${
             clicked === action ? "opacity-0" : "opacity-100"
@@ -189,7 +189,7 @@ export default function NoteOptions() {
 
   return (
     <div
-      className="min-h-screen bg-background text-primary font-sans w-full flex flex-col justify-center items-center relative px-4"
+      className="min-h-screen bg-page text-primary font-sans w-full flex flex-col justify-center items-center relative px-4"
       style={{
         backgroundImage: `
           radial-gradient(circle, rgba(150, 150, 150, 0.15) 1.5px, transparent 1.5px)
@@ -263,22 +263,11 @@ export default function NoteOptions() {
             {helperText}
           </motion.p>
 
-          <motion.button
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.8 }}
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            className="mt-2 w-full py-3 px-4 rounded-lg font-semibold bg-blue-500 text-background hover:opacity-85 transition-all cursor-pointer text-sm"
-          >
-            Sign in to unlock these options
-          </motion.button>
-
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.5, delay: 0.9 }}
-            className="mt-5 text-left text-xs text-muted space-y-2"
+            className="mt-3 text-left text-xs text-muted space-y-2"
           >
             <p className="uppercase tracking-wide font-semibold text-[10px] text-muted">
               What happens when you sign in
