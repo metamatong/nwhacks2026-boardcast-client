@@ -8,10 +8,7 @@ import {
   X,
   Copy,
   Check,
-  Users,
   ChevronLeft,
-  Wifi,
-  Download,
   Trash2,
   Plus,
 } from "lucide-react";
@@ -26,31 +23,63 @@ interface Snippet {
 interface Participant {
   id: string;
   name: string;
-  isOnline: boolean;
   color: string;
 }
 
 const MOCK_SNIPPETS: Snippet[] = [
-  { id: "1", title: "Diagram 1", description: "Flow Chart", timestamp: new Date(Date.now() - 300000) },
-  { id: "2", title: "Notes 2", description: "Meeting Notes", timestamp: new Date(Date.now() - 600000) },
-  { id: "3", title: "Wireframe 3", description: "UI Design", timestamp: new Date(Date.now() - 900000) },
-  { id: "4", title: "Brainstorm 4", description: "Ideas", timestamp: new Date(Date.now() - 1200000) },
-  { id: "5", title: "Plan 5", description: "Project Plan", timestamp: new Date(Date.now() - 1500000) },
-  { id: "6", title: "Code 6", description: "Code Review", timestamp: new Date(Date.now() - 1800000) },
+  {
+    id: "1",
+    title: "Diagram 1",
+    description: "Flow Chart",
+    timestamp: new Date(Date.now() - 300000),
+  },
+  {
+    id: "2",
+    title: "Notes 2",
+    description: "Meeting Notes",
+    timestamp: new Date(Date.now() - 600000),
+  },
+  {
+    id: "3",
+    title: "Wireframe 3",
+    description: "UI Design",
+    timestamp: new Date(Date.now() - 900000),
+  },
+  {
+    id: "4",
+    title: "Brainstorm 4",
+    description: "Ideas",
+    timestamp: new Date(Date.now() - 1200000),
+  },
+  {
+    id: "5",
+    title: "Plan 5",
+    description: "Project Plan",
+    timestamp: new Date(Date.now() - 1500000),
+  },
+  {
+    id: "6",
+    title: "Code 6",
+    description: "Code Review",
+    timestamp: new Date(Date.now() - 1800000),
+  },
 ];
 
 const MOCK_PARTICIPANTS: Participant[] = [
-  { id: "1", name: "John Doe", isOnline: true, color: "bg-blue-500" },
-  { id: "2", name: "Jane Smith", isOnline: true, color: "bg-purple-500" },
-  { id: "3", name: "Bob Johnson", isOnline: true, color: "bg-green-500" },
+  { id: "1", name: "John Doe", color: "bg-blue-500" },
+  { id: "2", name: "Jane Smith", color: "bg-purple-500" },
+  { id: "3", name: "Bob Johnson", color: "bg-green-500" },
+  { id: "4", name: "Alice Brown", color: "bg-yellow-500" },
+  { id: "5", name: "Charlie Davis", color: "bg-red-500" },
 ];
 
-const ParticipantAvatars: React.FC<{ participants: Participant[] }> = ({ participants }) => {
-  const onlineParticipants = participants.filter((p) => p.isOnline);
+const ParticipantAvatars: React.FC<{ participants: Participant[] }> = ({
+  participants,
+}) => {
   return (
     <div className="flex items-center gap-2">
       <div className="flex -space-x-2">
-        {onlineParticipants.slice(0, 3).map((participant) => (
+        {participants.slice(0, 3).map((participant) => (
           <div
             key={participant.id}
             className={`w-8 h-8 rounded-full ${participant.color} border-2 border-page flex items-center justify-center text-xs font-semibold text-white`}
@@ -60,10 +89,8 @@ const ParticipantAvatars: React.FC<{ participants: Participant[] }> = ({ partici
           </div>
         ))}
       </div>
-      {onlineParticipants.length > 3 && (
-        <span className="text-xs text-muted">
-          +{onlineParticipants.length - 3}
-        </span>
+      {participants.length > 3 && (
+        <span className="text-xs text-muted">+{participants.length - 3}</span>
       )}
     </div>
   );
@@ -75,7 +102,19 @@ const Header: React.FC<{
   participants: Participant[];
   onCopyCode: () => void;
   copied: boolean;
-}> = ({ roomCode, title, participants, onCopyCode, copied }) => (
+  showParticipants: boolean;
+  onToggleParticipants: () => void;
+  onKickParticipant: (id: string) => void;
+}> = ({
+  roomCode,
+  title,
+  participants,
+  onCopyCode,
+  copied,
+  showParticipants,
+  onToggleParticipants,
+  onKickParticipant,
+}) => (
   <header className="bg-page/80 backdrop-blur-sm border-b border-selected p-4 shrink-0 z-10 sticky top-0">
     <div className="max-w-7xl mx-auto">
       <div className="hidden md:flex items-center justify-between gap-4">
@@ -103,14 +142,60 @@ const Header: React.FC<{
             )}
           </a>
         </div>
-        <div className="flex items-center gap-3">
-          <ParticipantAvatars participants={participants} />
-          <div className="flex flex-col items-end">
-            <span className="text-sm font-semibold text-primary">
-              {participants.filter((p) => p.isOnline).length}
-            </span>
-            <span className="text-xs text-muted">online</span>
+        <div className="relative">
+          <div
+            onClick={onToggleParticipants}
+            className="flex items-center gap-3 px-5 py-2.5 bg-background rounded-lg border border-selected hover:border-gray-500 transform ease-in duration-100 cursor-pointer"
+          >
+            <ParticipantAvatars participants={participants} />
+            <div className="flex flex-col items-end">
+              <span className="text-sm font-semibold text-primary">
+                {participants.length}
+              </span>
+              <span className="text-xs text-muted">In Room</span>
+            </div>
           </div>
+          {showParticipants && (
+            <div className="absolute right-0 top-full mt-2 w-64 bg-page border border-selected rounded-xl shadow-2xl overflow-hidden z-50">
+              <div className="px-4 py-3 border-b border-selected bg-background/50 backdrop-blur-sm flex justify-between items-center">
+                <span className="text-xs font-bold text-muted uppercase tracking-wider">
+                  Participants
+                </span>
+                <span className="text-xs bg-selected px-2 py-0.5 rounded-full text-primary font-mono">
+                  {participants.length}
+                </span>
+              </div>
+              <div className="max-h-[300px] overflow-y-auto p-2 space-y-1">
+                {participants.map((participant) => (
+                  <div
+                    key={participant.id}
+                    className="flex items-center gap-3 p-2 hover:bg-hover rounded-lg transition-colors group"
+                  >
+                    <div
+                      className={`w-8 h-8 rounded-full ${participant.color} flex items-center justify-center text-xs font-bold text-white shadow-sm transition-all`}
+                    >
+                      {participant.name.charAt(0)}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-medium text-primary truncate">
+                        {participant.name}
+                      </div>
+                    </div>
+                    <a
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onKickParticipant(participant.id);
+                      }}
+                      className="p-1.5 hover:bg-red-500/20 border border-selected hover:border-red-500 rounded-md transition-all cursor-pointer opacity-0 group-hover:opacity-100"
+                      aria-label={`Kick ${participant.name}`}
+                    >
+                      <Trash2 className="w-4 h-4 text-muted hover:text-red-500" />
+                    </a>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
       <div className="md:hidden space-y-3">
@@ -203,7 +288,13 @@ const ControlPanel: React.FC<{
   onOpenWhiteboard: () => void;
   onEndSession: () => void;
   isRecording: boolean;
-}> = ({ onShareScreen, onStartRecording, onOpenWhiteboard, onEndSession, isRecording }) => (
+}> = ({
+  onShareScreen,
+  onStartRecording,
+  onOpenWhiteboard,
+  onEndSession,
+  isRecording,
+}) => (
   <div className="bg-page/80 backdrop-blur-sm border-t border-selected p-4 shrink-0">
     <div className="max-w-7xl mx-auto">
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
@@ -248,7 +339,6 @@ const SnippetCard: React.FC<{
   onDelete: () => void;
 }> = ({ snippet, onClick, onDelete }) => {
   const [isHovered, setIsHovered] = useState(false);
-
   return (
     <div
       className={`group bg-background p-3 rounded-lg border border-selected transition-all ${
@@ -273,7 +363,6 @@ const SnippetCard: React.FC<{
           })}
         </div>
       </a>
-
       {isHovered && (
         <a
           onClick={(e) => {
@@ -290,7 +379,6 @@ const SnippetCard: React.FC<{
   );
 };
 
-
 const Sidebar: React.FC<{
   isOpen: boolean;
   onClose: () => void;
@@ -298,7 +386,14 @@ const Sidebar: React.FC<{
   onSnippetClick: (snippet: Snippet) => void;
   onDeleteSnippet: (id: string) => void;
   onCreateSnippet: () => void;
-}> = ({ isOpen, onClose, snippets, onSnippetClick, onDeleteSnippet, onCreateSnippet }) => (
+}> = ({
+  isOpen,
+  onClose,
+  snippets,
+  onSnippetClick,
+  onDeleteSnippet,
+  onCreateSnippet,
+}) => (
   <>
     <div
       className={`fixed inset-0 bg-background/80 backdrop-blur-sm transition-opacity duration-300 z-40 lg:hidden ${
@@ -354,9 +449,12 @@ const Sidebar: React.FC<{
           ) : (
             <div className="flex flex-col items-center justify-center h-full text-center p-8">
               <Layers className="w-16 h-16 text-muted mb-4" />
-              <p className="text-secondary font-semibold mb-2">No snippets yet</p>
+              <p className="text-secondary font-semibold mb-2">
+                No snippets yet
+              </p>
               <p className="text-muted text-sm">
-                Capture moments from your whiteboard session to save and review later
+                Capture moments from your whiteboard session to save and review
+                later
               </p>
             </div>
           )}
@@ -366,10 +464,10 @@ const Sidebar: React.FC<{
   </>
 );
 
-const SidebarToggle: React.FC<{
-  onClick: () => void;
-  isOpen: boolean;
-}> = ({ onClick, isOpen }) => (
+const SidebarToggle: React.FC<{ onClick: () => void; isOpen: boolean }> = ({
+  onClick,
+  isOpen,
+}) => (
   <a
     onClick={onClick}
     className={`fixed top-1/2 -translate-y-1/2 z-30 bg-page/90 backdrop-blur-sm hover:bg-hover text-primary px-3 py-6 rounded-l-lg shadow-xl border border-selected border-r-0 transition-all duration-300 group cursor-pointer ${
@@ -388,7 +486,9 @@ const Room: React.FC = () => {
   const [roomCode] = useState("ABC-123-XYZ");
   const [title] = useState("Untitled Board");
   const [snippets, setSnippets] = useState(MOCK_SNIPPETS);
-  const participants = useMemo(() => MOCK_PARTICIPANTS, []);
+  const [showParticipants, setShowParticipants] = useState(false);
+  const [participants, setParticipants] =
+    useState<Participant[]>(MOCK_PARTICIPANTS);
 
   const handleCopyCode = useCallback(async () => {
     try {
@@ -425,7 +525,7 @@ const Room: React.FC = () => {
   }, []);
 
   const handleStartRecording = useCallback(() => {
-    setIsRecording(!isRecording);
+    setIsRecording((prev) => !prev);
     console.log(isRecording ? "Stop recording" : "Start recording");
   }, [isRecording]);
 
@@ -439,6 +539,12 @@ const Room: React.FC = () => {
     }
   }, []);
 
+  const handleKickParticipant = useCallback((id: string) => {
+    setParticipants((prev) => prev.filter((p) => p.id !== id));
+    setShowParticipants(false);
+    console.log("Kicked participant:", id);
+  }, []);
+
   return (
     <div className="h-screen bg-background text-primary overflow-hidden flex flex-col font-sans">
       <Header
@@ -447,6 +553,9 @@ const Room: React.FC = () => {
         participants={participants}
         onCopyCode={handleCopyCode}
         copied={copied}
+        showParticipants={showParticipants}
+        onToggleParticipants={() => setShowParticipants((s) => !s)}
+        onKickParticipant={handleKickParticipant}
       />
       <WhiteboardArea />
       <ControlPanel
