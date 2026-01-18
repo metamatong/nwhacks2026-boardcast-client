@@ -34,8 +34,8 @@ export default function DrawingToolbar({
     <div className="fixed bottom-8 right-8 z-20 flex flex-col gap-2">
       {/* Colors Dialog */}
       {showColors && (
-        <div className="absolute bottom-full right-0 mb-2 bg-[#1f1f1f] border border-gray-600 rounded-lg p-4 shadow-md">
-          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">
+        <div className="absolute bottom-full right-0 mb-2 bg-page border border-selected rounded-lg p-4 shadow-md">
+          <p className="text-xs font-semibold text-muted uppercase tracking-wide mb-3">
             Colors
           </p>
           <div className="grid grid-cols-3 gap-2">
@@ -49,8 +49,8 @@ export default function DrawingToolbar({
                 }}
                 className={`w-8 h-8 rounded-md border-2 transition-all ${
                   selectedColor === color.value
-                    ? "border-blue-400 scale-110"
-                    : "border-gray-600 hover:border-blue-400"
+                    ? "border-primary scale-110"
+                    : "border-selected hover:border-primary"
                 }`}
                 style={{ backgroundColor: color.value }}
                 title={color.name}
@@ -69,10 +69,10 @@ export default function DrawingToolbar({
           }}
           className={`w-10 h-10 rounded-md border-2 transition-all flex items-center justify-center cursor-pointer ${
             showColors
-              ? "border-gray-400 bg-gray-500 text-white"
+              ? "border-primary bg-selected text-white"
               : selectedColor !== "eraser" && selectedColor !== ""
-                ? "border-gray-400 text-white"
-                : "border-gray-600 bg-gray-700 text-gray-300 hover:border-gray-400 hover:bg-gray-600"
+                ? "border-primary text-white"
+                : "border-selected bg-hover text-secondary hover:border-primary hover:bg-selected"
           }`}
           style={
             selectedColor !== "eraser" && selectedColor !== "" && !showColors
@@ -92,8 +92,8 @@ export default function DrawingToolbar({
           }}
           className={`w-10 h-10 rounded-md border-2 transition-all flex items-center justify-center cursor-pointer ${
             selectedColor === "eraser"
-              ? "border-gray-400 bg-gray-500 text-white"
-              : "border-gray-600 bg-gray-700 text-gray-300 hover:border-gray-400 hover:bg-gray-600"
+              ? "border-primary bg-selected text-white"
+              : "border-selected bg-hover text-secondary hover:border-primary hover:bg-selected"
           }`}
           title="Eraser"
         >
@@ -128,7 +128,7 @@ export default function DrawingToolbar({
           className={`w-10 h-10 rounded-md border-2 transition-all flex items-center justify-center cursor-pointer ${
             confirmClear
               ? "border-red-700 bg-red-800 text-white"
-              : "border-gray-600 bg-gray-700 text-gray-300 hover:border-gray-400 hover:bg-gray-600"
+              : "border-selected bg-hover text-secondary hover:border-primary hover:bg-selected"
           }`}
           title={confirmClear ? "Confirm Clear" : "Clear"}
         >

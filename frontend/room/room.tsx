@@ -257,7 +257,7 @@ const WhiteboardArea: React.FC = () => (
     className="flex-1 bg-background flex items-center justify-center p-4 sm:p-6 lg:p-8 min-h-0 relative"
     style={{
       backgroundImage: `radial-gradient(circle, rgba(150, 150, 150, 0.15) 1.5px, transparent 1.5px)`,
-      backgroundSize: "24px 24px",
+      backgroundSize: "40px 40px",
     }}
   >
     <motion.div
@@ -312,7 +312,7 @@ const Controla: React.FC<{
   disabled?: boolean;
 }> = ({ icon, label, onClick, variant = "secondary", disabled = false }) => {
   const variantClasses = {
-    primary: "bg-blue-500 text-background hover:opacity-80",
+    primary: "bg-primary text-background hover:opacity-80",
     secondary: "bg-hover text-primary hover:opacity-80 border border-selected",
     danger: "bg-hover text-primary hover:border-red-500 border border-selected",
   };
@@ -515,7 +515,7 @@ const Sidebar: React.FC<{
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             onClick={onCreateSnippet}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-500 text-background rounded-lg font-semibold hover:opacity-80 transition-all cursor-pointer outline-none focus:outline-none focus:ring-0 focus-visible:outline-none"
+            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-primary text-background rounded-lg font-semibold hover:opacity-80 transition-all cursor-pointer outline-none focus:outline-none focus:ring-0 focus-visible:outline-none"
           >
             <Plus className="w-4 h-4" />
             <span className="text-sm">New Snippet</span>

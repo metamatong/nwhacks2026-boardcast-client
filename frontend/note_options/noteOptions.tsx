@@ -158,7 +158,7 @@ export default function NoteOptions() {
       onClick={() => handleClick(action)}
       title={label}
       aria-label={label}
-      className="flex flex-col items-center gap-2 px-4 py-2 rounded-lg text-sm text-primary hover:text-blue-500 transition-colors cursor-pointer"
+      className="flex flex-col items-center gap-2 px-4 py-2 rounded-lg text-sm text-primary hover:text-primary transition-colors cursor-pointer"
     >
       <div className="relative h-10 w-10 flex items-center justify-center shadow-sm">
         <Icon
@@ -269,7 +269,7 @@ export default function NoteOptions() {
             transition={{ duration: 0.5, delay: 0.8 }}
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
-            className="mt-2 w-full py-3 px-4 rounded-lg font-semibold bg-blue-500 text-background hover:opacity-85 transition-all cursor-pointer text-sm"
+            className="mt-2 w-full py-3 px-4 rounded-lg font-semibold bg-primary text-background hover:opacity-85 transition-all cursor-pointer text-sm"
           >
             Sign in to unlock these options
           </motion.button>
