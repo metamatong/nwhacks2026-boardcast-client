@@ -1,116 +1,174 @@
 "use client";
 
 import { useState } from "react";
-import { Copy, Check } from "lucide-react";
+import HowItWorksModal from "./HowItWorksModal";
+import MouseTrail from "../components/MouseTrail";
+import DrawingToolbar from "../components/DrawingToolbar";
 
-export default function CreateRoomPage() {
-  const [title] = useState("My Awesome Room"); // example title
-  const [roomCode] = useState(generateRoomCode());
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [copied, setCopied] = useState(false);
+export default function Landing() {
+  const [mode, setMode] = useState<"join" | "create">("join");
+  const [roomCode, setRoomCode] = useState("");
+  const [username, setUsername] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [showModal, setShowModal] = useState(false);
+  const [drawingColor, setDrawingColor] = useState("rgba(100, 180, 255, 0.35)");
 
-  function generateRoomCode() {
-    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-    let code = "";
-    for (let i = 0; i < 6; i++) {
-      code += chars[Math.floor(Math.random() * chars.length)];
-    }
-    return code;
-  }
+  const handleSubmit = () => {
+    if (mode === "join" && (!roomCode.trim() || !username.trim())) return;
+    if (mode === "create" && !username.trim()) return;
 
-  const handleProceed = () => {
-    setIsSubmitting(true);
-    console.log(`Proceeding to stream room "${title}" (${roomCode})`);
+    setIsLoading(true);
 
-    setTimeout(() => {
-      setIsSubmitting(false);
-      alert(`Streaming room "${title}"!`);
-    }, 1000);
+    console.log(
+      mode === "join"
+        ? `Joining room: ${roomCode} as ${username}`
+        : `Creating room as ${username}`,
+    );
   };
 
-  const onCopyCode = () => {
-    navigator.clipboard.writeText(roomCode);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500); // reset after 1.5s
+  const isFormValid =
+    mode === "join" ? roomCode.trim() && username.trim() : username.trim();
+
+  const handleClearCanvas = () => {
+    const canvas = document.querySelector("canvas") as HTMLCanvasElement;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext("2d");
+    if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
   };
 
   return (
     <div
-      className="min-h-screen bg-background text-primary font-sans flex flex-col items-center justify-center px-4 relative"
+      className="landing min-h-screen bg-background text-primary font-sans flex flex-col items-center justify-center px-4 relative"
       style={{
         backgroundImage: `
           radial-gradient(circle, rgba(150, 150, 150, 0.15) 1.5px, transparent 1.5px)
         `,
-        backgroundSize: "40px 40px",
       }}
     >
+      <div className="absolute top-4 left-4 flex items-center gap-2 bg-background/70 px-3 py-1 rounded-md text-xs text-primary shadow-md z-20">
+        <span className="text-yellow-400">★</span>
+        <span className="text-[rgba(255,255,255,0.4)]">
+          Hold left click to draw
+        </span>
+      </div>
+
+      <MouseTrail color={drawingColor} />
+
+      <DrawingToolbar
+        selectedColor={drawingColor}
+        setSelectedColor={setDrawingColor}
+        onEraser={() => setDrawingColor("eraser")}
+        onClear={handleClearCanvas}
+      />
+
+      <HowItWorksModal isOpen={showModal} onClose={() => setShowModal(false)} />
+
       <div className="w-full max-w-md relative z-10">
-        {/* Heading */}
-        <div className="mb-4 text-center">
-          <h1 className="text-6xl font-bold text-primary mb-2">Room Created!</h1>
-          <p className="text-secondary">Set your room title and invite others</p>
+        <div className="mb-12 text-center">
+          <h1 className="text-8xl font-bold text-primary mb-2">Boardcast</h1>
+          <p className="text-secondary">Stream your whiteboard in real time</p>
         </div>
 
-        {/* Card */}
-        <div className="bg-page rounded-xl border border-selected p-8 space-y-6">
-          {/* Room Title & Code */}
-          <div className="flex flex-col sm:flex-row sm:justify-between items-center gap-4">
-            <div className="flex-1 text-center sm:text-left">
-              <p className="text-xs font-semibold text-muted uppercase tracking-wide mb-1">
-                Room Title
-              </p>
-              <div className="px-4 py-2 border border-selected rounded-lg bg-background text-primary font-semibold">
-                {title}
-              </div>
-            </div>
-
-            <div className="flex-1 text-center sm:text-right relative">
-              <p className="text-xs font-semibold text-muted uppercase tracking-wide mb-1">
-                Room Code
-              </p>
-              <div className="flex items-center justify-center sm:justify-end gap-2 px-4 py-2 border border-selected rounded-lg bg-background text-primary font-mono text-lg tracking-widest select-all">
-                {roomCode}
-                <button
-                  onClick={onCopyCode}
-                  className="p-2 hover:bg-hover rounded-lg transition-colors cursor-pointer group outline-none focus:outline-none focus:ring-0 focus-visible:outline-none"
-                  aria-label="Copy room code"
-                >
-                  {copied ? (
-                    <Check className="w-4 h-4 text-primary" />
-                  ) : (
-                    <Copy className="w-4 h-4 text-secondary group-hover:text-primary transition-colors" />
-                  )}
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Tips / Instructions */}
-          <div className="bg-background/50 border border-primary/30 rounded-lg p-4 space-y-2.5 text-sm shadow-sm">
-            <p>• Keep this tab open while streaming your board.</p>
-            <p>• Ensure your phone sits securely before starting.</p>
-            <p>• The whole whiteboard should be captured on camera.</p>
-            <p>• Share the room code with others.</p>
-          </div>
-
-          {/* Proceed Button */}
+        <div className="space-y-6 mb-8">
           <button
-            onClick={handleProceed}
-            disabled={isSubmitting}
+            onClick={() => setShowModal(true)}
+            className="w-full py-3 px-4 rounded-md font-medium text-sm bg-hover text-secondary hover:opacity-80 transition-all cursor-pointer"
+          >
+            Learn how it works
+          </button>
+
+          <div className="flex items-center gap-3">
+            <div className="flex-1 border-t border-selected" />
+            <span className="text-xs text-muted">or</span>
+            <div className="flex-1 border-t border-selected" />
+          </div>
+        </div>
+
+        <div className="bg-page rounded-xl border border-selected p-8">
+          <div className="flex gap-2 mb-8">
+            <button
+              onClick={() => setMode("join")}
+              className={`flex-1 py-2 px-4 rounded-lg font-semibold transition-all text-sm cursor-pointer ${
+                mode === "join"
+                  ? "bg-selected text-primary border border-primary"
+                  : "bg-background text-secondary border border-selected hover:border-primary"
+              }`}
+            >
+              Join
+            </button>
+
+            <button
+              onClick={() => setMode("create")}
+              className={`flex-1 py-2 px-4 rounded-lg font-semibold transition-all text-sm cursor-pointer ${
+                mode === "create"
+                  ? "bg-selected text-primary border border-primary"
+                  : "bg-background text-secondary border border-selected hover:border-primary"
+              }`}
+            >
+              Start
+            </button>
+          </div>
+
+          <div className="space-y-4 mb-6">
+            <div>
+              <label className="block text-xs font-semibold text-muted uppercase tracking-wide mb-2">
+                Name
+              </label>
+              <input
+                type="text"
+                placeholder="Your name"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                onKeyPress={(e) => e.key === "Enter" && handleSubmit()}
+                className="w-full px-4 py-3 border border-selected rounded-lg bg-background text-primary placeholder-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition"
+              />
+            </div>
+
+            {mode === "join" && (
+              <div>
+                <label className="block text-xs font-semibold text-muted uppercase tracking-wide mb-2">
+                  Session Code
+                </label>
+                <input
+                  type="text"
+                  placeholder="ABC123"
+                  value={roomCode}
+                  onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
+                  onKeyPress={(e) => e.key === "Enter" && handleSubmit()}
+                  className="w-full px-4 py-3 border border-selected rounded-lg bg-background text-primary placeholder-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition uppercase tracking-widest text-center font-mono text-lg"
+                />
+              </div>
+            )}
+          </div>
+
+          <button
+            onClick={handleSubmit}
+            disabled={!isFormValid || isLoading}
             className={`w-full py-3 px-4 rounded-lg font-semibold transition-all cursor-pointer ${
-              !isSubmitting
+              isFormValid && !isLoading
                 ? "bg-primary text-background hover:opacity-80"
                 : "bg-selected text-muted cursor-not-allowed"
             }`}
           >
-            {isSubmitting ? "Proceeding..." : "Proceed to Stream"}
+            {isLoading
+              ? "Connecting..."
+              : mode === "join"
+                ? "Join"
+                : "Start Boardcast"}
           </button>
+
+          {mode === "create" && (
+            <p className="text-xs text-muted text-center mt-4">
+              Your session code will be generated
+            </p>
+          )}
         </div>
 
-        {/* Footer text */}
-        <div className="mt-3 text-center">
+        <div className="mt-8 text-center">
           <p className="text-xs text-muted leading-relaxed">
-            Transform physical whiteboards into live, collaborative digital pages. Capture, stream, and save in real time.
+            Transform physical whiteboards into live, collaborative digital
+            pages. Capture, stream, and save in real time.
           </p>
         </div>
       </div>
