@@ -308,21 +308,15 @@ const Controla: React.FC<{
   icon: React.ReactNode;
   label: string;
   onClick: () => void;
-  variant?: "primary" | "secondary" | "danger";
   disabled?: boolean;
-}> = ({ icon, label, onClick, variant = "secondary", disabled = false }) => {
-  const variantClasses = {
-    primary: "bg-selected text-primary hover:bg-hover transition-colors duration-300",
-    secondary: "bg-hover text-primary hover:opacity-80 border border-selected transition-colors duration-300",
-    danger: "bg-hover text-primary hover:border-red-500 border border-selected transition-colors duration-300",
-  };
+}> = ({ icon, label, onClick, disabled = false }) => {
   return (
     <motion.button
       whileHover={{ scale: disabled ? 1 : 1.02 }}
       whileTap={{ scale: disabled ? 1 : 0.98 }}
       onClick={onClick}
       disabled={disabled}
-      className={`${variantClasses[variant]} ${
+      className={`bg-hover text-primary hover:opacity-80 border border-selected ${
         disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
       } px-4 py-3 rounded-lg font-semibold transition-all flex items-center justify-center gap-2 outline-none focus:outline-none focus:ring-0 focus-visible:outline-none`}
     >
@@ -362,7 +356,6 @@ const ControlPanel: React.FC<{
           icon={<Share className="w-4 h-4" />}
           label="Share Screen"
           onClick={onShareScreen}
-          variant="primary"
         />
         <Controla
           icon={
@@ -374,19 +367,16 @@ const ControlPanel: React.FC<{
           }
           label={isRecording ? "Recording..." : "Start Recording"}
           onClick={onStartRecording}
-          variant={isRecording ? "danger" : "primary"}
         />
         <Controla
           icon={<Layers className="w-4 h-4" />}
           label="Whiteboard"
           onClick={onOpenWhiteboard}
-          variant="primary"
         />
         <Controla
           icon={<LogOut className="w-4 h-4" />}
           label="End Session"
           onClick={onEndSession}
-          variant="primary"
         />
       </motion.div>
     </div>
