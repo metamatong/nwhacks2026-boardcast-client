@@ -266,7 +266,7 @@ export default function Landing() {
                   </label>
                   <input
                     type="text"
-                    placeholder="ABC123"
+                    placeholder="ABC 123"
                     value={roomCode}
                     onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
                     onKeyPress={(e) => e.key === "Enter" && handleSubmit()}
