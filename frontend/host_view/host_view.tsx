@@ -34,6 +34,61 @@ const ICE_SERVERS: RTCConfiguration = {
   ],
 };
 
+const API_BASE_URL = (
+  process.env.NEXT_PUBLIC_API_BASE_URL || "https://boardcast-server.fly.dev"
+).replace(/\/$/, "");
+
+const AUDIO_CHUNK_TIMESLICE_MS = 5000;
+
+const pickAudioMimeType = (): string => {
+  if (typeof MediaRecorder === "undefined" || !MediaRecorder.isTypeSupported) {
+    return "";
+  }
+
+  const preferred = [
+    "audio/webm;codecs=opus",
+    "audio/ogg;codecs=opus",
+    "audio/webm",
+  ];
+
+  return preferred.find((type) => MediaRecorder.isTypeSupported(type)) || "";
+};
+
+const getAudioFileExtension = (mimeType: string): string => {
+  if (mimeType.includes("ogg")) return "ogg";
+  if (mimeType.includes("webm")) return "webm";
+  return "webm";
+};
+
+const uploadAudioChunk = async ({
+  apiBaseUrl,
+  roomId,
+  blob,
+  durationMs,
+}: {
+  apiBaseUrl: string;
+  roomId: string;
+  blob: Blob;
+  durationMs: number;
+}) => {
+  const form = new FormData();
+  form.append("room_id", roomId);
+  form.append("duration_ms", String(durationMs));
+
+  const extension = getAudioFileExtension(blob.type);
+  form.append("file", blob, `chunk-${Date.now()}.${extension}`);
+
+  const resp = await fetch(`${apiBaseUrl}/api/media/audio-chunks/`, {
+    method: "POST",
+    body: form,
+  });
+
+  if (!resp.ok) {
+    const text = await resp.text();
+    throw new Error(`Audio upload failed: ${resp.status} ${text}`);
+  }
+};
+
 // 3-stage flow for mobile compatibility: idle → ready → live
 type Stage = "idle" | "ready" | "live";
 
@@ -49,6 +104,8 @@ const HostView: React.FC = () => {
   const [showHelp, setShowHelp] = useState(false);
   const [showScreenshots, setShowScreenshots] = useState(false);
   const [webrtcStatus, setWebrtcStatus] = useState<string>("idle");
+  const [audioRecording, setAudioRecording] = useState(false);
+  const [audioUploadError, setAudioUploadError] = useState<string | null>(null);
   const [screenshots, setScreenshots] = useState<Screenshot[]>([]);
 
   // Get room details from URL parameters
@@ -58,8 +115,11 @@ const HostView: React.FC = () => {
   // Refs
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const audioStreamRef = useRef<MediaStream | null>(null);
+  const audioRecorderRef = useRef<MediaRecorder | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const screenshotIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const lastAudioChunkAtRef = useRef<number>(0);
 
   // WebRTC peer connections (one per participant)
   const peerConnectionsRef = useRef<Map<string, RTCPeerConnection>>(new Map());
@@ -96,6 +156,7 @@ const HostView: React.FC = () => {
   const {
     participants: wsParticipants,
     isConnected,
+    roomId,
     sendWebRTCSignal,
     sendMessage,
     getClientId,
@@ -133,13 +194,20 @@ const HostView: React.FC = () => {
     if (stage !== "idle") return;
 
     try {
+      if (typeof navigator === "undefined" || !navigator.mediaDevices?.getUserMedia) {
+        alert(
+          "Camera access isn't available in this browser or context. Try HTTPS or a supported browser.",
+        );
+        return;
+      }
+
       const constraints: MediaStreamConstraints = {
         video: {
           facingMode: facingMode,
           width: { ideal: 1280 },
           height: { ideal: 720 },
         },
-        audio: true,
+        audio: false,
       };
 
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
@@ -151,6 +219,92 @@ const HostView: React.FC = () => {
       alert("Camera access denied. Please allow camera access and try again.");
     }
   }, [stage, facingMode]);
+
+  const stopAudioRecording = useCallback(() => {
+    const recorder = audioRecorderRef.current;
+    if (recorder && recorder.state !== "inactive") {
+      recorder.stop();
+    }
+    audioRecorderRef.current = null;
+
+    if (audioStreamRef.current) {
+      audioStreamRef.current.getTracks().forEach((track) => track.stop());
+      audioStreamRef.current = null;
+    }
+
+    setAudioRecording(false);
+  }, []);
+
+  const startAudioRecording = useCallback(async () => {
+    if (audioRecorderRef.current?.state === "recording") return;
+    if (!roomId) return;
+
+    setAudioUploadError(null);
+
+    if (typeof navigator === "undefined" || !navigator.mediaDevices?.getUserMedia) {
+      setAudioUploadError(
+        "Microphone access isn't available in this browser or context.",
+      );
+      return;
+    }
+
+    if (typeof MediaRecorder === "undefined") {
+      setAudioUploadError("Audio recording isn't supported in this browser.");
+      return;
+    }
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      audioStreamRef.current = stream;
+
+      const mimeType = pickAudioMimeType();
+      const recorder = new MediaRecorder(
+        stream,
+        mimeType ? { mimeType } : undefined,
+      );
+      audioRecorderRef.current = recorder;
+      lastAudioChunkAtRef.current = Date.now();
+
+      recorder.ondataavailable = async (event: BlobEvent) => {
+        if (!event.data || event.data.size === 0) return;
+
+        const now = Date.now();
+        const durationMs = Math.max(0, now - lastAudioChunkAtRef.current);
+        lastAudioChunkAtRef.current = now;
+
+        try {
+          await uploadAudioChunk({
+            apiBaseUrl: API_BASE_URL,
+            roomId,
+            blob: event.data,
+            durationMs,
+          });
+        } catch (err) {
+          const message =
+            err instanceof Error ? err.message : "Audio upload failed";
+          console.error(message);
+          setAudioUploadError(message);
+        }
+      };
+
+      recorder.onstop = () => {
+        stream.getTracks().forEach((track) => track.stop());
+        audioStreamRef.current = null;
+        setAudioRecording(false);
+      };
+
+      recorder.onerror = () => {
+        setAudioUploadError("Audio recording failed.");
+      };
+
+      recorder.start(AUDIO_CHUNK_TIMESLICE_MS);
+      setAudioRecording(true);
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Microphone access failed.";
+      setAudioUploadError(message);
+    }
+  }, [roomId]);
 
   // Take a screenshot from the video stream
   const takeScreenshot = useCallback(() => {
@@ -238,6 +392,19 @@ const HostView: React.FC = () => {
     console.log("Stream is now live");
   }, [stage, startScreenshotInterval]);
 
+  useEffect(() => {
+    if (stage !== "live" || !roomId) {
+      stopAudioRecording();
+      return;
+    }
+
+    void startAudioRecording();
+
+    return () => {
+      stopAudioRecording();
+    };
+  }, [stage, roomId, startAudioRecording, stopAudioRecording]);
+
   // Flip camera
   const flipCamera = useCallback(async () => {
     const newMode = facingMode === "environment" ? "user" : "environment";
@@ -248,13 +415,20 @@ const HostView: React.FC = () => {
       streamRef.current.getTracks().forEach((t) => t.stop());
 
       try {
+        if (typeof navigator === "undefined" || !navigator.mediaDevices?.getUserMedia) {
+          alert(
+            "Camera access isn't available in this browser or context. Try HTTPS or a supported browser.",
+          );
+          return;
+        }
+
         const stream = await navigator.mediaDevices.getUserMedia({
           video: {
             facingMode: newMode,
             width: { ideal: 1280 },
             height: { ideal: 720 },
           },
-          audio: true,
+          audio: false,
         });
         streamRef.current = stream;
 
@@ -267,14 +441,9 @@ const HostView: React.FC = () => {
         peerConnectionsRef.current.forEach((pc) => {
           const senders = pc.getSenders();
           const videoTrack = stream.getVideoTracks()[0];
-          const audioTrack = stream.getAudioTracks()[0];
           const videoSender = senders.find((s) => s.track?.kind === "video");
-          const audioSender = senders.find((s) => s.track?.kind === "audio");
           if (videoSender && videoTrack) {
             videoSender.replaceTrack(videoTrack);
-          }
-          if (audioSender && audioTrack) {
-            audioSender.replaceTrack(audioTrack);
           }
         });
       } catch (error) {
@@ -287,6 +456,7 @@ const HostView: React.FC = () => {
   const endStream = useCallback(() => {
     if (confirm("End stream and return to home?")) {
       stopScreenshotInterval();
+      stopAudioRecording();
       if (streamRef.current) {
         streamRef.current.getTracks().forEach((t) => t.stop());
         streamRef.current = null;
@@ -295,7 +465,7 @@ const HostView: React.FC = () => {
       peerConnectionsRef.current.clear();
       window.location.href = "/";
     }
-  }, [stopScreenshotInterval]);
+  }, [stopScreenshotInterval, stopAudioRecording]);
 
   // Download a single screenshot
   const downloadScreenshot = useCallback((screenshot: Screenshot) => {
@@ -401,13 +571,14 @@ const HostView: React.FC = () => {
   useEffect(() => {
     return () => {
       stopScreenshotInterval();
+      stopAudioRecording();
       if (streamRef.current) {
         streamRef.current.getTracks().forEach((t) => t.stop());
       }
       peerConnectionsRef.current.forEach((pc) => pc.close());
       peerConnectionsRef.current.clear();
     };
-  }, [stopScreenshotInterval]);
+  }, [stopScreenshotInterval, stopAudioRecording]);
 
   return (
     <div
@@ -458,6 +629,15 @@ const HostView: React.FC = () => {
                 : roomCode}
             </code>
           </motion.div>
+          {stage === "live" && (audioRecording || audioUploadError) && (
+            <div
+              className={`text-xs ${
+                audioUploadError ? "text-red-400" : "text-muted"
+              }`}
+            >
+              {audioUploadError ? "Audio upload error" : "Audio uploading"}
+            </div>
+          )}
         </div>
 
         {stage === "live" && (
