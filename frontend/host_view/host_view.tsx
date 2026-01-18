@@ -3,13 +3,19 @@
 import React, { useState, useCallback, useRef, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Camera, SwitchCamera, HelpCircle, Play } from "lucide-react";
+import { X, Camera, SwitchCamera, HelpCircle, Play, Download, Image } from "lucide-react";
 import { useRoomWebSocket } from "@/frontend/hooks/useRoomWebSocket";
 
 interface Participant {
   id: string;
   name: string;
   color: string;
+}
+
+interface Screenshot {
+  id: string;
+  dataUrl: string;
+  timestamp: Date;
 }
 
 // ICE servers for WebRTC
@@ -33,7 +39,9 @@ const HostView: React.FC = () => {
   );
   const [showParticipants, setShowParticipants] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
+  const [showScreenshots, setShowScreenshots] = useState(false);
   const [webrtcStatus, setWebrtcStatus] = useState<string>("idle");
+  const [screenshots, setScreenshots] = useState<Screenshot[]>([]);
 
   // Get room details from URL parameters
   const roomCode = searchParams.get("id") || "ABC123";
@@ -42,6 +50,8 @@ const HostView: React.FC = () => {
   // Refs
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const screenshotIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // WebRTC peer connections (one per participant)
   const peerConnectionsRef = useRef<Map<string, RTCPeerConnection>>(new Map());
@@ -133,6 +143,66 @@ const HostView: React.FC = () => {
     }
   }, [stage, facingMode]);
 
+  // Take a screenshot from the video stream
+  const takeScreenshot = useCallback(() => {
+    if (!videoRef.current || !streamRef.current) return;
+
+    const video = videoRef.current;
+    
+    // Create canvas if it doesn't exist
+    if (!canvasRef.current) {
+      canvasRef.current = document.createElement("canvas");
+    }
+    
+    const canvas = canvasRef.current;
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    
+    // Draw the current video frame to canvas
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    
+    // Convert to data URL
+    const dataUrl = canvas.toDataURL("image/png");
+    
+    const screenshot: Screenshot = {
+      id: `screenshot-${Date.now()}`,
+      dataUrl,
+      timestamp: new Date(),
+    };
+    
+    setScreenshots((prev) => [...prev, screenshot]);
+    console.log("Screenshot captured at:", screenshot.timestamp.toISOString());
+  }, []);
+
+  // Start automatic screenshot interval
+  const startScreenshotInterval = useCallback(() => {
+    if (screenshotIntervalRef.current) {
+      clearInterval(screenshotIntervalRef.current);
+    }
+    
+    // Take screenshots every 5 seconds
+    screenshotIntervalRef.current = setInterval(() => {
+      takeScreenshot();
+    }, 5000);
+    
+    // Take an initial screenshot immediately
+    setTimeout(() => takeScreenshot(), 1000);
+    
+    console.log("Screenshot interval started (every 5 seconds)");
+  }, [takeScreenshot]);
+
+  // Stop automatic screenshot interval
+  const stopScreenshotInterval = useCallback(() => {
+    if (screenshotIntervalRef.current) {
+      clearInterval(screenshotIntervalRef.current);
+      screenshotIntervalRef.current = null;
+      console.log("Screenshot interval stopped");
+    }
+  }, []);
+
   // Stage 2: Go live (ready → live)
   const goLive = useCallback(() => {
     if (stage !== "ready" || !streamRef.current || !videoRef.current) return;
@@ -140,8 +210,12 @@ const HostView: React.FC = () => {
     videoRef.current.srcObject = streamRef.current;
     videoRef.current.play().catch(console.error);
     setStage("live");
+    
+    // Start taking screenshots automatically
+    startScreenshotInterval();
+    
     console.log("Stream is now live");
-  }, [stage]);
+  }, [stage, startScreenshotInterval]);
 
   // Flip camera
   const flipCamera = useCallback(async () => {
@@ -186,6 +260,7 @@ const HostView: React.FC = () => {
   // End stream
   const endStream = useCallback(() => {
     if (confirm("End stream and return to home?")) {
+      stopScreenshotInterval();
       if (streamRef.current) {
         streamRef.current.getTracks().forEach((t) => t.stop());
         streamRef.current = null;
@@ -193,6 +268,32 @@ const HostView: React.FC = () => {
       peerConnectionsRef.current.forEach((pc) => pc.close());
       peerConnectionsRef.current.clear();
       window.location.href = "/";
+    }
+  }, [stopScreenshotInterval]);
+
+  // Download a single screenshot
+  const downloadScreenshot = useCallback((screenshot: Screenshot) => {
+    const link = document.createElement("a");
+    link.href = screenshot.dataUrl;
+    link.download = `screenshot-${screenshot.timestamp.toISOString().replace(/[:.]/g, "-")}.png`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }, []);
+
+  // Download all screenshots as a zip (simplified: downloads individually)
+  const downloadAllScreenshots = useCallback(() => {
+    screenshots.forEach((screenshot, index) => {
+      setTimeout(() => {
+        downloadScreenshot(screenshot);
+      }, index * 200); // Stagger downloads to prevent browser blocking
+    });
+  }, [screenshots, downloadScreenshot]);
+
+  // Clear all screenshots
+  const clearScreenshots = useCallback(() => {
+    if (confirm("Clear all screenshots?")) {
+      setScreenshots([]);
     }
   }, []);
 
@@ -273,13 +374,14 @@ const HostView: React.FC = () => {
   // Cleanup on unmount
   useEffect(() => {
     return () => {
+      stopScreenshotInterval();
       if (streamRef.current) {
         streamRef.current.getTracks().forEach((t) => t.stop());
       }
       peerConnectionsRef.current.forEach((pc) => pc.close());
       peerConnectionsRef.current.clear();
     };
-  }, []);
+  }, [stopScreenshotInterval]);
 
   return (
     <div
@@ -505,6 +607,25 @@ const HostView: React.FC = () => {
             >
               <SwitchCamera className="w-6 h-6 text-primary" />
             </motion.button>
+
+            {/* Screenshots Button */}
+            <motion.button
+              initial={{ x: 50, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              transition={{ delay: 0.15 }}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => setShowScreenshots(true)}
+              className="w-16 h-16 rounded-full border border-selected flex items-center justify-center shadow-xl cursor-pointer backdrop-blur-sm relative"
+              style={{ backgroundColor: "rgba(30, 30, 30, 0.8)" }}
+            >
+              <Image className="w-6 h-6 text-primary" />
+              {screenshots.length > 0 && (
+                <span className="absolute -top-1 -right-1 w-5 h-5 bg-blue-500 rounded-full text-xs text-white flex items-center justify-center font-bold">
+                  {screenshots.length}
+                </span>
+              )}
+            </motion.button>
           </motion.div>
         )}
       </AnimatePresence>
@@ -621,6 +742,96 @@ const HostView: React.FC = () => {
                   </ul>
                 </div>
               </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Screenshots Modal */}
+      <AnimatePresence>
+        {showScreenshots && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 bg-background/90 backdrop-blur-md z-40 flex items-center justify-center p-4"
+            onClick={() => setShowScreenshots(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-page rounded-xl border border-selected p-6 max-w-2xl w-full space-y-4 max-h-[80vh] overflow-y-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-bold text-primary">
+                  Screenshots ({screenshots.length})
+                </h2>
+                <div className="flex items-center gap-2">
+                  {screenshots.length > 0 && (
+                    <>
+                      <button
+                        onClick={downloadAllScreenshots}
+                        className="px-3 py-1.5 bg-blue-500 text-white rounded-lg text-sm font-medium flex items-center gap-1 hover:bg-blue-600"
+                      >
+                        <Download className="w-4 h-4" />
+                        Download All
+                      </button>
+                      <button
+                        onClick={clearScreenshots}
+                        className="px-3 py-1.5 bg-red-500/20 text-red-400 rounded-lg text-sm font-medium hover:bg-red-500/30"
+                      >
+                        Clear
+                      </button>
+                    </>
+                  )}
+                  <button
+                    onClick={() => setShowScreenshots(false)}
+                    className="w-8 h-8 rounded-full hover:bg-background flex items-center justify-center"
+                  >
+                    <X className="w-5 h-5 text-muted" />
+                  </button>
+                </div>
+              </div>
+              
+              {screenshots.length > 0 ? (
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                  {screenshots.map((screenshot) => (
+                    <div
+                      key={screenshot.id}
+                      className="relative group rounded-lg overflow-hidden border border-selected"
+                    >
+                      <img
+                        src={screenshot.dataUrl}
+                        alt={`Screenshot at ${screenshot.timestamp.toLocaleTimeString()}`}
+                        className="w-full h-auto"
+                      />
+                      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                        <button
+                          onClick={() => downloadScreenshot(screenshot)}
+                          className="p-2 bg-white/20 rounded-full hover:bg-white/30"
+                        >
+                          <Download className="w-5 h-5 text-white" />
+                        </button>
+                      </div>
+                      <div className="absolute bottom-0 left-0 right-0 bg-black/60 px-2 py-1">
+                        <p className="text-xs text-white/80">
+                          {screenshot.timestamp.toLocaleTimeString()}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12">
+                  <Image className="w-12 h-12 text-muted mx-auto mb-3" />
+                  <p className="text-sm text-muted">No screenshots yet</p>
+                  <p className="text-xs text-muted mt-1">
+                    Screenshots are captured automatically every 5 seconds
+                  </p>
+                </div>
+              )}
             </motion.div>
           </motion.div>
         )}
