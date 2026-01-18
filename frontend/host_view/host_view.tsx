@@ -3,7 +3,15 @@
 import React, { useState, useCallback, useRef, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Camera, SwitchCamera, HelpCircle, Play, Download, Image } from "lucide-react";
+import {
+  X,
+  Camera,
+  SwitchCamera,
+  HelpCircle,
+  Play,
+  Download,
+  Image,
+} from "lucide-react";
 import { useRoomWebSocket } from "@/frontend/hooks/useRoomWebSocket";
 
 interface Participant {
@@ -131,7 +139,7 @@ const HostView: React.FC = () => {
           width: { ideal: 1280 },
           height: { ideal: 720 },
         },
-        audio: false,
+        audio: true,
       };
 
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
@@ -149,33 +157,33 @@ const HostView: React.FC = () => {
     if (!videoRef.current || !streamRef.current) return;
 
     const video = videoRef.current;
-    
+
     // Create canvas if it doesn't exist
     if (!canvasRef.current) {
       canvasRef.current = document.createElement("canvas");
     }
-    
+
     const canvas = canvasRef.current;
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
-    
+
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
-    
+
     // Draw the current video frame to canvas
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-    
+
     // Convert to data URL (use JPEG for smaller size when broadcasting)
     const dataUrl = canvas.toDataURL("image/jpeg", 0.7);
-    
+
     const screenshot: Screenshot = {
       id: `screenshot-${Date.now()}`,
       dataUrl,
       timestamp: new Date(),
     };
-    
+
     setScreenshots((prev) => [...prev, screenshot]);
-    
+
     // Broadcast screenshot to all participants via WebSocket
     sendMessage({
       type: "screenshot",
@@ -183,8 +191,11 @@ const HostView: React.FC = () => {
       dataUrl: screenshot.dataUrl,
       timestamp: screenshot.timestamp.toISOString(),
     });
-    
-    console.log("Screenshot captured and broadcast at:", screenshot.timestamp.toISOString());
+
+    console.log(
+      "Screenshot captured and broadcast at:",
+      screenshot.timestamp.toISOString(),
+    );
   }, [sendMessage]);
 
   // Start automatic screenshot interval
@@ -192,15 +203,15 @@ const HostView: React.FC = () => {
     if (screenshotIntervalRef.current) {
       clearInterval(screenshotIntervalRef.current);
     }
-    
+
     // Take screenshots every 10 seconds (reduced frequency for WebSocket bandwidth)
     screenshotIntervalRef.current = setInterval(() => {
       takeScreenshot();
     }, 10000);
-    
+
     // Take an initial screenshot after 2 seconds
     setTimeout(() => takeScreenshot(), 2000);
-    
+
     console.log("Screenshot interval started (every 10 seconds)");
   }, [takeScreenshot]);
 
@@ -220,10 +231,10 @@ const HostView: React.FC = () => {
     videoRef.current.srcObject = streamRef.current;
     videoRef.current.play().catch(console.error);
     setStage("live");
-    
+
     // Start taking screenshots automatically
     startScreenshotInterval();
-    
+
     console.log("Stream is now live");
   }, [stage, startScreenshotInterval]);
 
@@ -243,7 +254,7 @@ const HostView: React.FC = () => {
             width: { ideal: 1280 },
             height: { ideal: 720 },
           },
-          audio: false,
+          audio: true,
         });
         streamRef.current = stream;
 
@@ -256,9 +267,14 @@ const HostView: React.FC = () => {
         peerConnectionsRef.current.forEach((pc) => {
           const senders = pc.getSenders();
           const videoTrack = stream.getVideoTracks()[0];
+          const audioTrack = stream.getAudioTracks()[0];
           const videoSender = senders.find((s) => s.track?.kind === "video");
+          const audioSender = senders.find((s) => s.track?.kind === "audio");
           if (videoSender && videoTrack) {
             videoSender.replaceTrack(videoTrack);
+          }
+          if (audioSender && audioTrack) {
+            audioSender.replaceTrack(audioTrack);
           }
         });
       } catch (error) {
@@ -804,7 +820,7 @@ const HostView: React.FC = () => {
                   </button>
                 </div>
               </div>
-              
+
               {screenshots.length > 0 ? (
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                   {screenshots.map((screenshot) => (
