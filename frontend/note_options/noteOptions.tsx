@@ -7,6 +7,7 @@ import {
   CheckCircleIcon,
 } from "@heroicons/react/24/outline";
 import { BsFiletypePdf } from "react-icons/bs";
+import { jsPDF } from "jspdf";
 
 type Action = "download" | "share" | "pdf" | null;
 
@@ -37,11 +38,56 @@ export default function NoteOptions() {
     document.body.removeChild(link);
   };
 
+  const downloadPDF = async () => {
+    try {
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.src = "/digital_board_example.png";
+
+      await new Promise((resolve, reject) => {
+        img.onload = resolve;
+        img.onerror = reject;
+      });
+
+      const pdf = new jsPDF({
+        orientation: img.width > img.height ? "landscape" : "portrait",
+        unit: "px",
+        format: [img.width, img.height],
+      });
+
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+
+      const imgAspectRatio = img.width / img.height;
+      const pageAspectRatio = pageWidth / pageHeight;
+
+      let renderWidth, renderHeight;
+
+      if (imgAspectRatio > pageAspectRatio) {
+        renderWidth = pageWidth;
+        renderHeight = pageWidth / imgAspectRatio;
+      } else {
+        renderHeight = pageHeight;
+        renderWidth = pageHeight * imgAspectRatio;
+      }
+
+      const x = (pageWidth - renderWidth) / 2;
+      const y = (pageHeight - renderHeight) / 2;
+
+      pdf.addImage(img, "PNG", x, y, renderWidth, renderHeight);
+      pdf.save(`boardcast-notes-${Date.now()}.pdf`);
+    } catch (error) {
+      console.error("Error generating PDF:", error);
+    }
+  };
+
   const handleClick = (action: Action) => {
     if (clicked) return;
 
     if (action === "download") {
       downloadImage();
+    } else if (action === "pdf") {
+      downloadPDF();
     }
 
     setClicked(action);
@@ -130,11 +176,7 @@ export default function NoteOptions() {
             {helperText}
           </p>
 
-          <button className="mt-2 w-full py-3 px-4 rounded-lg font-semibold bg-blue-500 text-background hover:opacity-85 transition-all cursor-pointer text-sm">
-            Sign in to unlock these options
-          </button>
-
-          <div className="mt-5 text-left text-xs text-muted space-y-2">
+          <div className="mt-3 text-left text-xs text-muted space-y-2">
             <p className="uppercase tracking-wide font-semibold text-[10px] text-muted">
               What happens when you sign in
             </p>
