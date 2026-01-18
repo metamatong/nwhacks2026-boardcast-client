@@ -1,4 +1,4 @@
-import HostView from "@/frontend/host_view/host_view";
+import Landing from "@/frontend/landing/landing";
 export default function HomePage() {
-  return <HostView />;
+  return <Landing />;
 }
