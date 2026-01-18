@@ -737,7 +737,7 @@ const Room: React.FC = () => {
   // Connect to WebSocket and get real participants
   const { participants: wsParticipants, isConnected, sendWebRTCSignal } = useRoomWebSocket({
     joinCode: roomCode,
-    participantName: "Participant",
+    participantName: title,
     isHost: false,
     onWebRTCSignal: handleWebRTCSignal,
   });
