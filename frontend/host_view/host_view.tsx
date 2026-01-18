@@ -250,10 +250,15 @@ const HostView: React.FC = () => {
     }
   }, [isStreaming]);
 
-  // Auto-start stream on mount
+  // Auto-start stream on mount with delay for mobile
   useEffect(() => {
-    startStream();
+    // Small delay to ensure DOM is ready on mobile
+    const timer = setTimeout(() => {
+      startStream();
+    }, 100);
+    
     return () => {
+      clearTimeout(timer);
       const s = videoRef.current?.srcObject as MediaStream | null;
       if (s) s.getTracks().forEach((t) => t.stop());
       attachStream(null);
@@ -481,9 +486,10 @@ const HostView: React.FC = () => {
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 100, opacity: 0 }}
             transition={{ duration: 0.5 }}
-            className="absolute bottom-0 left-0 right-0 flex items-center justify-center gap-3 sm:gap-4 px-4 sm:px-6 pb-6 sm:pb-8 pt-4 z-10"
+            className="fixed bottom-0 left-0 right-0 flex items-center justify-center gap-3 sm:gap-4 px-4 sm:px-6 z-50 bg-gradient-to-t from-black/60 via-black/30 to-transparent"
             style={{
               paddingBottom: "max(1.5rem, env(safe-area-inset-bottom))",
+              paddingTop: "2rem",
             }}
           >
             {/* Participants Button with Avatars */}
