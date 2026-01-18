@@ -1,202 +1,582 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useCallback, useMemo } from "react";
+import {
+  Share,
+  Circle,
+  Layers,
+  LogOut,
+  X,
+  Copy,
+  Check,
+  ChevronLeft,
+  Trash2,
+  Plus,
+} from "lucide-react";
+
+interface Snippet {
+  id: string;
+  title: string;
+  description: string;
+  timestamp: Date;
+}
+
+interface Participant {
+  id: string;
+  name: string;
+  color: string;
+}
+
+const MOCK_SNIPPETS: Snippet[] = [
+  {
+    id: "1",
+    title: "Diagram 1",
+    description: "Flow Chart",
+    timestamp: new Date(Date.now() - 300000),
+  },
+  {
+    id: "2",
+    title: "Notes 2",
+    description: "Meeting Notes",
+    timestamp: new Date(Date.now() - 600000),
+  },
+  {
+    id: "3",
+    title: "Wireframe 3",
+    description: "UI Design",
+    timestamp: new Date(Date.now() - 900000),
+  },
+  {
+    id: "4",
+    title: "Brainstorm 4",
+    description: "Ideas",
+    timestamp: new Date(Date.now() - 1200000),
+  },
+  {
+    id: "5",
+    title: "Plan 5",
+    description: "Project Plan",
+    timestamp: new Date(Date.now() - 1500000),
+  },
+  {
+    id: "6",
+    title: "Code 6",
+    description: "Code Review",
+    timestamp: new Date(Date.now() - 1800000),
+  },
+];
+
+const MOCK_PARTICIPANTS: Participant[] = [
+  { id: "1", name: "John Doe", color: "bg-blue-500" },
+  { id: "2", name: "Jane Smith", color: "bg-purple-500" },
+  { id: "3", name: "Bob Johnson", color: "bg-green-500" },
+  { id: "4", name: "Alice Brown", color: "bg-yellow-500" },
+  { id: "5", name: "Charlie Davis", color: "bg-red-500" },
+];
+
+const ParticipantAvatars: React.FC<{ participants: Participant[] }> = ({
+  participants,
+}) => {
+  return (
+    <div className="flex items-center gap-2">
+      <div className="flex -space-x-2">
+        {participants.slice(0, 3).map((participant) => (
+          <div
+            key={participant.id}
+            className={`w-8 h-8 rounded-full ${participant.color} border-2 border-page flex items-center justify-center text-xs font-semibold text-white`}
+            title={participant.name}
+          >
+            {participant.name.charAt(0)}
+          </div>
+        ))}
+      </div>
+      {participants.length > 3 && (
+        <span className="text-xs text-muted">+{participants.length - 3}</span>
+      )}
+    </div>
+  );
+};
+
+const Header: React.FC<{
+  roomCode: string;
+  title: string;
+  participants: Participant[];
+  onCopyCode: () => void;
+  copied: boolean;
+  showParticipants: boolean;
+  onToggleParticipants: () => void;
+  onKickParticipant: (id: string) => void;
+}> = ({
+  roomCode,
+  title,
+  participants,
+  onCopyCode,
+  copied,
+  showParticipants,
+  onToggleParticipants,
+  onKickParticipant,
+}) => (
+  <header className="bg-page/80 backdrop-blur-sm border-b border-selected p-4 shrink-0 z-10 sticky top-0">
+    <div className="max-w-7xl mx-auto">
+      <div className="hidden md:flex items-center justify-between gap-4">
+        <div className="flex-1 min-w-0">
+          <h1 className="text-xl font-bold text-primary truncate">{title}</h1>
+        </div>
+        <div className="flex items-center gap-3 px-5 py-2.5 bg-background rounded-lg border border-selected">
+          <div className="flex flex-col items-start">
+            <span className="text-[10px] text-muted uppercase tracking-wide font-semibold">
+              Room Code
+            </span>
+            <code className="font-mono text-sm text-primary font-bold tracking-[0.3em]">
+              {roomCode}
+            </code>
+          </div>
+          <a
+            onClick={onCopyCode}
+            className="p-2 hover:bg-hover rounded-lg transition-colors cursor-pointer group"
+            aria-label="Copy room code"
+          >
+            {copied ? (
+              <Check className="w-4 h-4 text-primary" />
+            ) : (
+              <Copy className="w-4 h-4 text-secondary group-hover:text-primary transition-colors" />
+            )}
+          </a>
+        </div>
+        <div className="relative">
+          <div
+            onClick={onToggleParticipants}
+            className="flex items-center gap-3 px-5 py-2.5 bg-background rounded-lg border border-selected hover:border-gray-500 transform ease-in duration-100 cursor-pointer"
+          >
+            <ParticipantAvatars participants={participants} />
+            <div className="flex flex-col items-end">
+              <span className="text-sm font-semibold text-primary">
+                {participants.length}
+              </span>
+              <span className="text-xs text-muted">In Room</span>
+            </div>
+          </div>
+          {showParticipants && (
+            <div className="absolute right-0 top-full mt-2 w-64 bg-page border border-selected rounded-xl shadow-2xl overflow-hidden z-50">
+              <div className="px-4 py-3 border-b border-selected bg-background/50 backdrop-blur-sm flex justify-between items-center">
+                <span className="text-xs font-bold text-muted uppercase tracking-wider">
+                  Participants
+                </span>
+                <span className="text-xs bg-selected px-2 py-0.5 rounded-full text-primary font-mono">
+                  {participants.length}
+                </span>
+              </div>
+              <div className="max-h-[300px] overflow-y-auto p-2 space-y-1">
+                {participants.map((participant) => (
+                  <div
+                    key={participant.id}
+                    className="flex items-center gap-3 p-2 hover:bg-hover rounded-lg transition-colors group"
+                  >
+                    <div
+                      className={`w-8 h-8 rounded-full ${participant.color} flex items-center justify-center text-xs font-bold text-white shadow-sm transition-all`}
+                    >
+                      {participant.name.charAt(0)}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-medium text-primary truncate">
+                        {participant.name}
+                      </div>
+                    </div>
+                    <a
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onKickParticipant(participant.id);
+                      }}
+                      className="p-1.5 hover:bg-red-500/20 border border-selected hover:border-red-500 rounded-md transition-all cursor-pointer opacity-0 group-hover:opacity-100"
+                      aria-label={`Kick ${participant.name}`}
+                    >
+                      <Trash2 className="w-4 h-4 text-muted hover:text-red-500" />
+                    </a>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+      <div className="md:hidden space-y-3">
+        <div className="flex items-center justify-between">
+          <h1 className="text-lg font-bold text-primary truncate">{title}</h1>
+          <ParticipantAvatars participants={participants} />
+        </div>
+        <div className="flex items-center gap-2 px-4 py-2 bg-background rounded-lg border border-selected">
+          <code className="font-mono text-sm text-primary font-bold tracking-widest flex-1">
+            {roomCode}
+          </code>
+          <a
+            onClick={onCopyCode}
+            className="p-1.5 hover:bg-hover rounded transition-colors cursor-pointer"
+            aria-label="Copy room code"
+          >
+            {copied ? (
+              <Check className="w-4 h-4 text-primary" />
+            ) : (
+              <Copy className="w-4 h-4 text-secondary" />
+            )}
+          </a>
+        </div>
+      </div>
+    </div>
+  </header>
+);
+
+const WhiteboardArea: React.FC = () => (
+  <div
+    className="flex-1 bg-background flex items-center justify-center p-4 sm:p-6 lg:p-8 min-h-0 relative"
+    style={{
+      backgroundImage: `radial-gradient(circle, rgba(150, 150, 150, 0.15) 1.5px, transparent 1.5px)`,
+      backgroundSize: "24px 24px",
+    }}
+  >
+    <div className="w-full h-full max-w-6xl bg-page/50 backdrop-blur-sm border border-selected rounded-xl flex items-center justify-center shadow-xl">
+      <div className="text-center space-y-6 p-8">
+        <div className="relative inline-block">
+          <Layers className="w-20 h-20 text-muted mx-auto" />
+          <div className="absolute -top-1 -right-1 w-3 h-3 bg-primary rounded-full animate-pulse" />
+        </div>
+        <div className="space-y-2">
+          <p className="text-secondary text-lg font-semibold">
+            Whiteboard Ready
+          </p>
+          <p className="text-muted text-sm max-w-md">
+            Start sharing your screen or use whiteboard tools to collaborate in
+            real-time
+          </p>
+        </div>
+        <div className="flex items-center justify-center gap-2 text-xs text-muted">
+          <div className="w-2 h-2 bg-primary rounded-full animate-pulse" />
+          <span>Waiting for content...</span>
+        </div>
+      </div>
+    </div>
+  </div>
+);
+
+const Controla: React.FC<{
+  icon: React.ReactNode;
+  label: string;
+  onClick: () => void;
+  variant?: "primary" | "secondary" | "danger";
+  disabled?: boolean;
+}> = ({ icon, label, onClick, variant = "secondary", disabled = false }) => {
+  const variantClasses = {
+    primary: "bg-primary text-background hover:opacity-80",
+    secondary: "bg-hover text-primary hover:opacity-80 border border-selected",
+    danger: "bg-hover text-primary hover:border-red-500 border border-selected",
+  };
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className={`${variantClasses[variant]} ${
+        disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
+      } px-4 py-3 rounded-lg font-semibold transition-all flex items-center justify-center gap-2`}
+    >
+      {icon}
+      <span className="hidden sm:inline text-sm">{label}</span>
+    </button>
+  );
+};
+
+const ControlPanel: React.FC<{
+  onShareScreen: () => void;
+  onStartRecording: () => void;
+  onOpenWhiteboard: () => void;
+  onEndSession: () => void;
+  isRecording: boolean;
+}> = ({
+  onShareScreen,
+  onStartRecording,
+  onOpenWhiteboard,
+  onEndSession,
+  isRecording,
+}) => (
+  <div className="bg-page/80 backdrop-blur-sm border-t border-selected p-4 shrink-0">
+    <div className="max-w-7xl mx-auto">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <Controla
+          icon={<Share className="w-4 h-4" />}
+          label="Share Screen"
+          onClick={onShareScreen}
+          variant="primary"
+        />
+        <Controla
+          icon={
+            isRecording ? (
+              <div className="w-4 h-4 bg-red-500 rounded-full animate-pulse" />
+            ) : (
+              <Circle className="w-4 h-4" />
+            )
+          }
+          label={isRecording ? "Recording..." : "Start Recording"}
+          onClick={onStartRecording}
+          variant={isRecording ? "danger" : "secondary"}
+        />
+        <Controla
+          icon={<Layers className="w-4 h-4" />}
+          label="Whiteboard"
+          onClick={onOpenWhiteboard}
+          variant="secondary"
+        />
+        <Controla
+          icon={<LogOut className="w-4 h-4" />}
+          label="End Session"
+          onClick={onEndSession}
+          variant="danger"
+        />
+      </div>
+    </div>
+  </div>
+);
+
+const SnippetCard: React.FC<{
+  snippet: Snippet;
+  onClick: () => void;
+  onDelete: () => void;
+}> = ({ snippet, onClick, onDelete }) => {
+  const [isHovered, setIsHovered] = useState(false);
+  return (
+    <div
+      className={`group bg-background p-3 rounded-lg border border-selected transition-all ${
+        isHovered ? "bg-hover border-primary" : ""
+      } relative`}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
+      <a onClick={onClick} className="w-full text-left cursor-pointer">
+        <div className="aspect-video bg-page border border-selected rounded-lg flex items-center justify-center mb-2 overflow-hidden transition-colors">
+          <div className="text-muted text-sm text-center px-2">
+            {snippet.title}
+          </div>
+        </div>
+        <div className="text-primary text-sm font-semibold transition-colors">
+          {snippet.description}
+        </div>
+        <div className="text-muted text-xs mt-1">
+          {snippet.timestamp.toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+          })}
+        </div>
+      </a>
+      {isHovered && (
+        <a
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete();
+          }}
+          className="absolute top-2 right-2 p-1.5 bg-background/90 hover:bg-red-500/20 border border-selected hover:border-red-500 rounded-md transition-all cursor-pointer"
+          aria-label="Delete snippet"
+        >
+          <Trash2 className="w-3 h-3 text-muted hover:text-red-500" />
+        </a>
+      )}
+    </div>
+  );
+};
+
+const Sidebar: React.FC<{
+  isOpen: boolean;
+  onClose: () => void;
+  snippets: Snippet[];
+  onSnippetClick: (snippet: Snippet) => void;
+  onDeleteSnippet: (id: string) => void;
+  onCreateSnippet: () => void;
+}> = ({
+  isOpen,
+  onClose,
+  snippets,
+  onSnippetClick,
+  onDeleteSnippet,
+  onCreateSnippet,
+}) => (
+  <>
+    <div
+      className={`fixed inset-0 bg-background/80 backdrop-blur-sm transition-opacity duration-300 z-40 lg:hidden ${
+        isOpen ? "opacity-100" : "opacity-0 pointer-events-none"
+      }`}
+      onClick={onClose}
+    />
+    <aside
+      className={`fixed right-0 top-0 h-full w-80 lg:w-96 bg-page/95 backdrop-blur-md border-l border-selected shadow-2xl transform transition-transform duration-300 ease-out z-50 ${
+        isOpen ? "translate-x-0" : "translate-x-full"
+      }`}
+    >
+      <div className="flex flex-col h-full">
+        <div className="flex items-center justify-between p-6 border-b border-selected shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-background rounded-lg border border-selected">
+              <Layers className="w-5 h-5 text-primary" />
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-primary">Snippets</h2>
+              <p className="text-xs text-muted">{snippets.length} saved</p>
+            </div>
+          </div>
+          <a
+            onClick={onClose}
+            className="p-2 hover:bg-hover rounded-lg transition-colors cursor-pointer"
+            aria-label="Close sidebar"
+          >
+            <X className="w-5 h-5 text-secondary" />
+          </a>
+        </div>
+        <div className="p-4 border-b border-selected space-y-2 shrink-0">
+          <a
+            onClick={onCreateSnippet}
+            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-primary text-background rounded-lg font-semibold hover:opacity-80 transition-all cursor-pointer"
+          >
+            <Plus className="w-4 h-4" />
+            <span className="text-sm">New Snippet</span>
+          </a>
+        </div>
+        <div className="flex-1 overflow-y-auto p-4">
+          {snippets.length > 0 ? (
+            <div className="grid grid-cols-1 gap-3">
+              {snippets.map((snippet) => (
+                <SnippetCard
+                  key={snippet.id}
+                  snippet={snippet}
+                  onClick={() => onSnippetClick(snippet)}
+                  onDelete={() => onDeleteSnippet(snippet.id)}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center h-full text-center p-8">
+              <Layers className="w-16 h-16 text-muted mb-4" />
+              <p className="text-secondary font-semibold mb-2">
+                No snippets yet
+              </p>
+              <p className="text-muted text-sm">
+                Capture moments from your whiteboard session to save and review
+                later
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+    </aside>
+  </>
+);
+
+const SidebarToggle: React.FC<{ onClick: () => void; isOpen: boolean }> = ({
+  onClick,
+  isOpen,
+}) => (
+  <a
+    onClick={onClick}
+    className={`fixed top-1/2 -translate-y-1/2 z-30 bg-page/90 backdrop-blur-sm hover:bg-hover text-primary px-3 py-6 rounded-l-lg shadow-xl border border-selected border-r-0 transition-all duration-300 group cursor-pointer ${
+      isOpen ? "right-80 lg:right-96 opacity-0 pointer-events-none" : "right-0"
+    }`}
+    aria-label="Toggle sidebar"
+  >
+    <ChevronLeft className="w-5 h-5 group-hover:scale-110 transition-transform" />
+  </a>
+);
 
 const Room: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [roomCode] = useState("ABC-123-XYZ");
+  const [title] = useState("Untitled Board");
+  const [snippets, setSnippets] = useState(MOCK_SNIPPETS);
+  const [showParticipants, setShowParticipants] = useState(false);
+  const [participants, setParticipants] =
+    useState<Participant[]>(MOCK_PARTICIPANTS);
+
+  const handleCopyCode = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(roomCode);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (error) {
+      console.error("Failed to copy:", error);
+    }
+  }, [roomCode]);
+
+  const handleSnippetClick = useCallback((snippet: Snippet) => {
+    console.log("Snippet clicked:", snippet);
+  }, []);
+
+  const handleDeleteSnippet = useCallback((id: string) => {
+    setSnippets((prev) => prev.filter((s) => s.id !== id));
+    console.log("Deleted snippet:", id);
+  }, []);
+
+  const handleCreateSnippet = useCallback(() => {
+    const newSnippet: Snippet = {
+      id: Date.now().toString(),
+      title: `Snippet ${snippets.length + 1}`,
+      description: "New Capture",
+      timestamp: new Date(),
+    };
+    setSnippets((prev) => [newSnippet, ...prev]);
+    console.log("Created snippet:", newSnippet);
+  }, [snippets.length]);
+
+  const handleShareScreen = useCallback(() => {
+    console.log("Share screen clicked");
+  }, []);
+
+  const handleStartRecording = useCallback(() => {
+    setIsRecording((prev) => !prev);
+    console.log(isRecording ? "Stop recording" : "Start recording");
+  }, [isRecording]);
+
+  const handleOpenWhiteboard = useCallback(() => {
+    console.log("Open whiteboard clicked");
+  }, []);
+
+  const handleEndSession = useCallback(() => {
+    if (confirm("Are you sure you want to end this session?")) {
+      console.log("End session clicked");
+    }
+  }, []);
+
+  const handleKickParticipant = useCallback((id: string) => {
+    setParticipants((prev) => prev.filter((p) => p.id !== id));
+    setShowParticipants(false);
+    console.log("Kicked participant:", id);
+  }, []);
 
   return (
-    <div className="h-screen bg-gray-900 text-white overflow-hidden">
-      {/* Main Content Area */}
-      <div
-        className={`h-full flex transition-all duration-300 ${sidebarOpen ? "mr-64 sm:mr-80" : "mr-0"}`}
-      >
-        <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-          {/* Room code at the top */}
-          <div className="bg-page border border-selected border-b p-2 sm:p-4 shrink-0 z-10 relative">
-            <div className="max-w-6xl mx-auto relative flex items-center">
-              {/* Left: Title */}
-              <div className="flex-1">
-                <h1 className="text-lg sm:text-xl font-bold">Untitled</h1>
-              </div>
-
-              {/* Center: Room Code */}
-              <div className="absolute left-1/2 transform -translate-x-1/2 flex items-center space-x-2">
-                <span className="text-gray-400 text-xs sm:text-sm">
-                  Room Code:
-                </span>
-                <code className="bg-gray-700 px-2 sm:px-3 py-1 rounded text-blue-400 font-mono text-xs sm:text-sm">
-                  ABC-123-XYZ
-                </code>
-                <a className="text-blue-400 hover:text-white text-xs sm:text-sm cursor-pointer">
-                  Copy
-                </a>
-              </div>
-
-              {/* Right: Participants */}
-              <div className="flex-1 text-right text-xs sm:text-sm text-gray-400">
-                3 participants online
-              </div>
-            </div>
-          </div>
-
-          {/* Screen at the top */}
-          <div className="flex-1 bg-black border-b-2 border-gray-700 flex flex-col p-2 sm:p-4 min-h-0">
-            <div className="text-center h-full flex flex-col justify-center items-center">
-              <div className="w-[90%] h-[90%] min-h-[200px] sm:min-h-[300px] bg-page border border-selected rounded-lg flex items-center justify-center mb-2 sm:mb-4 ">
-                <div className="text-gray-400 text-lg sm:text-xl px-4 text-center">
-                  Whiteboard Screen - Broadcast Content Here
-                </div>
-              </div>
-              <div className="text-xs sm:text-sm text-gray-500 shrink-0">
-                Room Whiteboard
-              </div>
-            </div>
-          </div>
-
-          {/* Bottom bar */}
-          <div className="bg-page border border-selected border-t p-2 sm:p-4 shrink-0">
-            <div className="max-w-6xl mx-auto">
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4">
-                <button className="bg-blue-600 hover:bg-blue-700 text-white px-3 sm:px-4 py-2 rounded-lg text-sm sm:text-base font-medium transition-colors cursor-pointer">
-                  Share Screen
-                </button>
-                <button className="bg-green-600 hover:bg-green-700 text-white px-3 sm:px-4 py-2 rounded-lg text-sm sm:text-base font-medium transition-colors cursor-pointer">
-                  Start Recording
-                </button>
-                <button className="bg-purple-600 hover:bg-purple-700 text-white px-3 sm:px-4 py-2 rounded-lg text-sm sm:text-base font-medium transition-colors cursor-pointer">
-                  Whiteboard Tools
-                </button>
-                <button className="bg-red-600 hover:bg-red-700 text-white px-3 sm:px-4 py-2 rounded-lg text-sm sm:text-base font-medium transition-colors cursor-pointer">
-                  End Session
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Right Sidebar */}
-      <div
-        className={`fixed right-0 top-0 h-full w-64 sm:w-80 bg-page border border-selected shadow-xl border-l transform transition-transform duration-300 ease-in-out z-50 ${
-          sidebarOpen ? "translate-x-0" : "translate-x-full"
-        }`}
-      >
-        <div className="p-4 sm:p-6 h-full flex flex-col">
-          <div className="flex justify-between items-center mb-4 sm:mb-6 shrink-0">
-            <h2 className="text-lg sm:text-xl font-bold">Board Snippets</h2>
-            <a
-              onClick={() => setSidebarOpen(false)}
-              className="cursor-pointer text-gray-400 hover:text-white text-xl sm:text-2xl"
-            >
-              ×
-            </a>
-          </div>
-
-          <div className="flex-1 overflow-auto space-y-2 sm:space-y-3">
-            {/* Whiteboard Snippet 1 */}
-            <div className="bg-gray-700 p-2 sm:p-3 rounded-lg cursor-pointer hover:bg-gray-600 transition-colors">
-              <div className="aspect-video bg-page border border-selected rounded flex items-center justify-center mb-2">
-                <div className="text-gray-400 text-xs text-center px-2">
-                  Diagram 1
-                </div>
-              </div>
-              <div className="text-xs text-gray-300 text-center">
-                Flow Chart
-              </div>
-            </div>
-
-            {/* Whiteboard Snippet 2 */}
-            <div className="bg-gray-700 p-2 sm:p-3 rounded-lg cursor-pointer hover:bg-gray-600 transition-colors">
-              <div className="aspect-video bg-page border border-selected rounded flex items-center justify-center mb-2">
-                <div className="text-gray-400 text-xs text-center px-2">
-                  Notes 2
-                </div>
-              </div>
-              <div className="text-xs text-gray-300 text-center">
-                Meeting Notes
-              </div>
-            </div>
-
-            {/* Whiteboard Snippet 3 */}
-            <div className="bg-gray-700 p-2 sm:p-3 rounded-lg cursor-pointer hover:bg-gray-600 transition-colors">
-              <div className="aspect-video bg-page border border-selected rounded flex items-center justify-center mb-2">
-                <div className="text-gray-400 text-xs text-center px-2">
-                  Wireframe 3
-                </div>
-              </div>
-              <div className="text-xs text-gray-300 text-center">UI Design</div>
-            </div>
-
-            {/* Whiteboard Snippet 4 */}
-            <div className="bg-gray-700 p-2 sm:p-3 rounded-lg cursor-pointer hover:bg-gray-600 transition-colors">
-              <div className="aspect-video bg-page border border-selected rounded flex items-center justify-center mb-2">
-                <div className="text-gray-400 text-xs text-center px-2">
-                  Brainstorm 4
-                </div>
-              </div>
-              <div className="text-xs text-gray-300 text-center">Ideas</div>
-            </div>
-
-            {/* Whiteboard Snippet 5 */}
-            <div className="bg-gray-700 p-2 sm:p-3 rounded-lg cursor-pointer hover:bg-gray-600 transition-colors">
-              <div className="aspect-video bg-page border border-selected rounded flex items-center justify-center mb-2">
-                <div className="text-gray-400 text-xs text-center px-2">
-                  Plan 5
-                </div>
-              </div>
-              <div className="text-xs text-gray-300 text-center">
-                Project Plan
-              </div>
-            </div>
-
-            {/* Whiteboard Snippet 6 */}
-            <div className="bg-gray-700 p-2 sm:p-3 rounded-lg cursor-pointer hover:bg-gray-600 transition-colors">
-              <div className="aspect-video bg-page border border-selected rounded flex items-center justify-center mb-2">
-                <div className="text-gray-400 text-xs text-center px-2">
-                  Code 6
-                </div>
-              </div>
-              <div className="text-xs text-gray-300 text-center">
-                Code Review
-              </div>
-            </div>
-
-            {/* Whiteboard Snippet 7 */}
-            <div className="bg-gray-700 p-2 sm:p-3 rounded-lg cursor-pointer hover:bg-gray-600 transition-colors">
-              <div className="aspect-video bg-page border border-selected rounded flex items-center justify-center mb-2">
-                <div className="text-gray-400 text-xs text-center px-2">
-                  Data 7
-                </div>
-              </div>
-              <div className="text-xs text-gray-300 text-center">Data Flow</div>
-            </div>
-
-            {/* Whiteboard Snippet 8 */}
-            <div className="bg-gray-700 p-2 sm:p-3 rounded-lg cursor-pointer hover:bg-gray-600 transition-colors">
-              <div className="aspect-video bg-page border border-selected rounded flex items-center justify-center mb-2">
-                <div className="text-gray-400 text-xs text-center px-2">
-                  Arch 8
-                </div>
-              </div>
-              <div className="text-xs text-gray-300 text-center">
-                Architecture
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Sidebar Toggle Button */}
-      <button
+    <div className="h-screen bg-background text-primary overflow-hidden flex flex-col font-sans">
+      <Header
+        roomCode={roomCode}
+        title={title}
+        participants={participants}
+        onCopyCode={handleCopyCode}
+        copied={copied}
+        showParticipants={showParticipants}
+        onToggleParticipants={() => setShowParticipants((s) => !s)}
+        onKickParticipant={handleKickParticipant}
+      />
+      <WhiteboardArea />
+      <ControlPanel
+        onShareScreen={handleShareScreen}
+        onStartRecording={handleStartRecording}
+        onOpenWhiteboard={handleOpenWhiteboard}
+        onEndSession={handleEndSession}
+        isRecording={isRecording}
+      />
+      <Sidebar
+        isOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        snippets={snippets}
+        onSnippetClick={handleSnippetClick}
+        onDeleteSnippet={handleDeleteSnippet}
+        onCreateSnippet={handleCreateSnippet}
+      />
+      <SidebarToggle
         onClick={() => setSidebarOpen(!sidebarOpen)}
-        className={`fixed top-1/2 transform -translate-y-1/2 z-40 bg-page border border-selected hover:bg-gray-700 text-white px-2 sm:px-3 py-4 sm:py-6 rounded-l-lg shadow-lg transition-all duration-300 cursor-pointer ${
-          sidebarOpen
-            ? "right-64 sm:right-80 opacity-0 pointer-events-none"
-            : "right-0 opacity-100"
-        }`}
-      >
-        <span className="text-lg sm:text-xl font-bold">☰</span>
-      </button>
+        isOpen={sidebarOpen}
+      />
     </div>
   );
 };
