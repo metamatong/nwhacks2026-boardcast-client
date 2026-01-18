@@ -21,12 +21,8 @@ export default function RoomCreatePage() {
 
   const handleProceed = () => {
     setIsSubmitting(true);
-    // Here you can navigate to the actual streaming page if different
-    console.log(`Proceeding to stream room "${title}" (${id})`);
-    setTimeout(() => {
-      setIsSubmitting(false);
-      alert(`Streaming room "${title}"!`);
-    }, 1000);
+    // Navigate to host view with room parameters
+    router.push(`/host_view?id=${id}&title=${encodeURIComponent(title)}`);
   };
 
   return (
