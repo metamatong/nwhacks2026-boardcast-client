@@ -11,8 +11,8 @@ import { BsFiletypePdf } from "react-icons/bs";
 type Action = "download" | "share" | "pdf" | null;
 
 export default function NoteOptions() {
-  const [hovered, setHovered] = useState<Action>(null); // controls helper text
-  const [clicked, setClicked] = useState<Action>(null); // controls showing check circle on click
+  const [hovered, setHovered] = useState<Action>(null);
+  const [clicked, setClicked] = useState<Action>(null);
   const timeoutRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -28,8 +28,21 @@ export default function NoteOptions() {
   const handleFocus = (action: Action) => setHovered(action);
   const handleBlur = () => setHovered(null);
 
+  const downloadImage = () => {
+    const link = document.createElement("a");
+    link.href = "/digital_board_example.png";
+    link.download = `boardcast-notes-${Date.now()}.png`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const handleClick = (action: Action) => {
-    if (clicked) return; // ignore while another action is in clicked state
+    if (clicked) return;
+
+    if (action === "download") {
+      downloadImage();
+    }
 
     setClicked(action);
 
@@ -37,7 +50,6 @@ export default function NoteOptions() {
       clearTimeout(timeoutRef.current);
     }
 
-    // Show check circle for 1.5 seconds
     timeoutRef.current = window.setTimeout(() => {
       setClicked(null);
       timeoutRef.current = null;
