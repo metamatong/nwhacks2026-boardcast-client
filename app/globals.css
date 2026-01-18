@@ -1,12 +1,12 @@
 @import "tailwindcss";
 
-body {
+.landing {
   user-select: none;
   -webkit-user-select: none;
 }
 
-input,
-textarea {
+.landing input,
+.landing textarea {
   user-select: text;
   -webkit-user-select: text;
 }
