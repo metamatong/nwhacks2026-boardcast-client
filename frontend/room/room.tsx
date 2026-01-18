@@ -269,7 +269,7 @@ const WhiteboardArea: React.FC<{
   webrtcStatus: string;
 }> = ({ videoRef, isConnected, hasStream, webrtcStatus }) => (
   <div
-    className="flex-1 bg-background flex items-center justify-center p-2 sm:p-4 min-h-0 relative overflow-hidden"
+    className="flex-1 bg-background flex items-center justify-center p-4 sm:p-6 lg:p-8 min-h-0 relative"
     style={{
       backgroundImage: `radial-gradient(circle, rgba(150, 150, 150, 0.15) 1.5px, transparent 1.5px)`,
       backgroundSize: "40px 40px",
@@ -279,24 +279,15 @@ const WhiteboardArea: React.FC<{
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.6, delay: 0.3 }}
-      className="w-full h-full bg-page/50 backdrop-blur-sm border border-selected rounded-xl flex items-center justify-center shadow-xl overflow-hidden relative"
+      className="w-full h-full max-w-6xl bg-page/50 backdrop-blur-sm border border-selected rounded-xl flex items-center justify-center shadow-xl overflow-hidden relative"
     >
-      {/* Video element for WebRTC stream - rotated 90 degrees for landscape viewing */}
+      {/* Video element for WebRTC stream */}
       <video
         ref={videoRef}
         autoPlay
         playsInline
         muted={false}
-        className={`${hasStream ? 'block' : 'hidden'}`}
-        style={{
-          // Rotate video 90 degrees and swap width/height to fill the landscape container
-          transform: 'rotate(90deg)',
-          transformOrigin: 'center center',
-          width: '100vh',
-          height: '100vw',
-          maxWidth: 'none',
-          objectFit: 'contain',
-        }}
+        className={`w-full h-full object-contain ${hasStream ? 'block' : 'hidden'}`}
       />
       
       {!hasStream && (
@@ -756,45 +747,6 @@ const Room: React.FC = () => {
     return () => {
       if (peerConnectionRef.current) {
         peerConnectionRef.current.close();
-      }
-    };
-  }, []);
-
-  // Lock screen orientation to landscape
-  useEffect(() => {
-    const lockOrientation = async () => {
-      try {
-        // Try to lock to landscape mode using the Screen Orientation API
-        const orientation = screen.orientation as ScreenOrientation & {
-          lock?: (orientation: string) => Promise<void>;
-          unlock?: () => void;
-        };
-        
-        if (orientation && orientation.lock) {
-          await orientation.lock('landscape');
-          console.log('Screen orientation locked to landscape');
-        }
-      } catch (error) {
-        // Orientation lock may not be supported or allowed
-        console.log('Could not lock screen orientation:', error);
-      }
-    };
-
-    lockOrientation();
-
-    // Cleanup: unlock orientation when leaving the room
-    return () => {
-      const orientation = screen.orientation as ScreenOrientation & {
-        lock?: (orientation: string) => Promise<void>;
-        unlock?: () => void;
-      };
-      
-      if (orientation && orientation.unlock) {
-        try {
-          orientation.unlock();
-        } catch (error) {
-          console.log('Could not unlock screen orientation:', error);
-        }
       }
     };
   }, []);
