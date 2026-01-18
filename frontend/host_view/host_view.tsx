@@ -21,16 +21,23 @@ const MOCK_PARTICIPANTS: Participant[] = [
 const HostView: React.FC = () => {
   const searchParams = useSearchParams();
   const [isStreaming, setIsStreaming] = useState(false);
-  const [facingMode, setFacingMode] = useState<"environment" | "user">("environment");
+  const [facingMode, setFacingMode] = useState<"environment" | "user">(
+    "environment",
+  );
   const [showParticipants, setShowParticipants] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   const [participants] = useState<Participant[]>(MOCK_PARTICIPANTS);
-  const [detectedRect, setDetectedRect] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
-  
+  const [detectedRect, setDetectedRect] = useState<{
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  } | null>(null);
+
   // Get room details from URL parameters
   const roomCode = searchParams.get("id") || "ABC 123";
   const roomName = searchParams.get("title") || "Untitled Board";
-  
+
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const userGestureCaptured = useRef(false);
@@ -58,82 +65,106 @@ const HostView: React.FC = () => {
   };
 
   // Start camera stream safely
-  const startStream = useCallback(async (mode?: "environment" | "user") => {
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      alert("Camera not supported. Use HTTPS/localhost and allow camera access.");
-      return;
-    }
-
-    const current = videoRef.current?.srcObject as MediaStream | null;
-    if (current) current.getTracks().forEach((t) => t.stop());
-
-    const targetMode = mode || facingMode;
-    
-    // Try multiple constraint strategies for better mobile compatibility
-    const constraintStrategies: MediaStreamConstraints[] = [
-      // Strategy 1: Exact facing mode with ideal resolution
-      {
-        video: {
-          facingMode: { exact: targetMode },
-          width: { ideal: 1280 },
-          height: { ideal: 720 }
-        },
-        audio: false,
-      },
-      // Strategy 2: Ideal facing mode with ideal resolution
-      {
-        video: {
-          facingMode: targetMode,
-          width: { ideal: 1280 },
-          height: { ideal: 720 }
-        },
-        audio: false,
-      },
-      // Strategy 3: Just facing mode (for mobile devices)
-      {
-        video: { facingMode: targetMode },
-        audio: false,
-      },
-      // Strategy 4: Basic video (fallback)
-      {
-        video: true,
-        audio: false,
-      },
-    ];
-
-    let stream: MediaStream | null = null;
-    let lastError: any = null;
-
-    for (const constraints of constraintStrategies) {
-      try {
-        stream = await navigator.mediaDevices.getUserMedia(constraints);
-        console.log("Stream started with constraints:", constraints);
-        break;
-      } catch (error) {
-        console.warn("Failed with constraints:", constraints, error);
-        lastError = error;
+  const startStream = useCallback(
+    async (mode?: "environment" | "user") => {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        alert(
+          "Camera not supported. Please use a modern browser with HTTPS.",
+        );
+        return;
       }
-    }
 
-    if (!stream) {
-      console.error("All camera strategies failed:", lastError);
-      alert("Failed to access camera. Please check permissions and ensure you're using HTTPS.");
-      setIsStreaming(false);
-      attachStream(null);
-      return;
-    }
+      const current = videoRef.current?.srcObject as MediaStream | null;
+      if (current) current.getTracks().forEach((t) => t.stop());
 
-    stream.getVideoTracks().forEach((track) => {
-      track.onended = () => {
+      const targetMode = mode || facingMode;
+
+      // Try multiple constraint strategies for better mobile compatibility
+      const constraintStrategies: MediaStreamConstraints[] = [
+        // Strategy 1: Mobile-optimized with facing mode
+        {
+          video: {
+            facingMode: targetMode,
+            width: { ideal: 1920, max: 1920 },
+            height: { ideal: 1080, max: 1080 },
+          },
+          audio: false,
+        },
+        // Strategy 2: Lower resolution for compatibility
+        {
+          video: {
+            facingMode: targetMode,
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+          },
+          audio: false,
+        },
+        // Strategy 3: Just facing mode (minimal constraints)
+        {
+          video: { facingMode: targetMode },
+          audio: false,
+        },
+        // Strategy 4: Try exact facing mode
+        {
+          video: { facingMode: { exact: targetMode } },
+          audio: false,
+        },
+        // Strategy 5: Basic video without facing mode (ultimate fallback)
+        {
+          video: {
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+          },
+          audio: false,
+        },
+        // Strategy 6: Absolute basic video
+        {
+          video: true,
+          audio: false,
+        },
+      ];
+
+      let stream: MediaStream | null = null;
+      let lastError: any = null;
+
+      for (const constraints of constraintStrategies) {
+        try {
+          stream = await navigator.mediaDevices.getUserMedia(constraints);
+          console.log("✅ Stream started with constraints:", constraints);
+          break;
+        } catch (error) {
+          console.warn("❌ Failed with constraints:", constraints, error);
+          lastError = error;
+        }
+      }
+
+      if (!stream) {
+        console.error("All camera strategies failed:", lastError);
+        const errorMsg =
+          lastError?.name === "NotAllowedError"
+            ? "Camera permission denied. Please allow camera access in your browser settings."
+            : lastError?.name === "NotFoundError"
+              ? "No camera found on this device."
+              : "Failed to access camera. Please check permissions and try again.";
+        alert(errorMsg);
         setIsStreaming(false);
         attachStream(null);
-      };
-    });
+        return;
+      }
 
-    attachStream(stream);
-    setIsStreaming(true);
-    console.log("Stream started successfully with facing mode:", targetMode);
-  }, [facingMode]);
+      stream.getVideoTracks().forEach((track) => {
+        track.onended = () => {
+          setIsStreaming(false);
+          attachStream(null);
+        };
+      });
+
+      attachStream(stream);
+      setIsStreaming(true);
+      console.log("✅ Stream started successfully with facing mode:", targetMode);
+    },
+    [facingMode],
+  );
 
   // Enhanced whiteboard detection with edge detection and contour analysis
   const detectWhiteboard = useCallback(() => {
@@ -164,24 +195,33 @@ const HostView: React.FC = () => {
     // Grayscale conversion
     for (let i = 0; i < data.length; i += 4) {
       const idx = i / 4;
-      gray[idx] = Math.floor(0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]);
+      gray[idx] = Math.floor(
+        0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2],
+      );
     }
 
     // Simple edge detection using gradient
     for (let y = 1; y < height - 1; y++) {
       for (let x = 1; x < width - 1; x++) {
         const idx = y * width + x;
-        
+
         // Sobel operators
         const gx =
-          -gray[(y - 1) * width + (x - 1)] + gray[(y - 1) * width + (x + 1)] +
-          -2 * gray[y * width + (x - 1)] + 2 * gray[y * width + (x + 1)] +
-          -gray[(y + 1) * width + (x - 1)] + gray[(y + 1) * width + (x + 1)];
-        
+          -gray[(y - 1) * width + (x - 1)] +
+          gray[(y - 1) * width + (x + 1)] +
+          -2 * gray[y * width + (x - 1)] +
+          2 * gray[y * width + (x + 1)] +
+          -gray[(y + 1) * width + (x - 1)] +
+          gray[(y + 1) * width + (x + 1)];
+
         const gy =
-          -gray[(y - 1) * width + (x - 1)] - 2 * gray[(y - 1) * width + x] - gray[(y - 1) * width + (x + 1)] +
-          gray[(y + 1) * width + (x - 1)] + 2 * gray[(y + 1) * width + x] + gray[(y + 1) * width + (x + 1)];
-        
+          -gray[(y - 1) * width + (x - 1)] -
+          2 * gray[(y - 1) * width + x] -
+          gray[(y - 1) * width + (x + 1)] +
+          gray[(y + 1) * width + (x - 1)] +
+          2 * gray[(y + 1) * width + x] +
+          gray[(y + 1) * width + (x + 1)];
+
         const magnitude = Math.sqrt(gx * gx + gy * gy);
         edges[idx] = magnitude > 50 ? 255 : 0;
       }
@@ -190,7 +230,7 @@ const HostView: React.FC = () => {
     // Find bright regions (potential whiteboard)
     const brightThreshold = 160;
     const brightMask = new Uint8Array(width * height);
-    
+
     for (let i = 0; i < gray.length; i++) {
       brightMask[i] = gray[i] > brightThreshold ? 255 : 0;
     }
@@ -198,18 +238,21 @@ const HostView: React.FC = () => {
     // Combine edges and brightness to find whiteboard candidates
     const combined = new Uint8Array(width * height);
     for (let i = 0; i < combined.length; i++) {
-      combined[i] = (brightMask[i] > 0 && edges[i] > 0) ? 255 : 0;
+      combined[i] = brightMask[i] > 0 && edges[i] > 0 ? 255 : 0;
     }
 
     // Find bounding box of largest connected bright region
-    let minX = width, minY = height, maxX = 0, maxY = 0;
+    let minX = width,
+      minY = height,
+      maxX = 0,
+      maxY = 0;
     let pixelCount = 0;
 
     // Sample grid for performance (every 8 pixels)
     for (let y = 0; y < height; y += 8) {
       for (let x = 0; x < width; x += 8) {
         const idx = y * width + x;
-        
+
         // Check if this area is bright
         if (brightMask[idx] > 0) {
           pixelCount++;
@@ -226,16 +269,18 @@ const HostView: React.FC = () => {
     const detectedHeight = maxY - minY;
     const aspectRatio = detectedWidth / Math.max(detectedHeight, 1);
     const area = detectedWidth * detectedHeight;
-    const minArea = (width * height) * 0.1; // At least 10% of frame
-    const maxArea = (width * height) * 0.9; // At most 90% of frame
+    const minArea = width * height * 0.1; // At least 10% of frame
+    const maxArea = width * height * 0.9; // At most 90% of frame
 
     // Check if detection is valid (reasonable size, aspect ratio, and pixel count)
     if (
       pixelCount > 200 &&
       area > minArea &&
       area < maxArea &&
-      aspectRatio > 0.5 && aspectRatio < 3 && // Reasonable aspect ratio
-      detectedWidth > 100 && detectedHeight > 100 // Minimum size
+      aspectRatio > 0.5 &&
+      aspectRatio < 3 && // Reasonable aspect ratio
+      detectedWidth > 100 &&
+      detectedHeight > 100 // Minimum size
     ) {
       // Add padding and ensure within bounds
       const padding = 30;
@@ -243,38 +288,24 @@ const HostView: React.FC = () => {
         x: Math.max(0, minX - padding),
         y: Math.max(0, minY - padding),
         width: Math.min(width - (minX - padding), detectedWidth + padding * 2),
-        height: Math.min(height - (minY - padding), detectedHeight + padding * 2),
+        height: Math.min(
+          height - (minY - padding),
+          detectedHeight + padding * 2,
+        ),
       });
     } else {
       setDetectedRect(null);
     }
   }, [isStreaming]);
 
-  // Auto-start stream on mount (desktop only, mobile requires user gesture)
+  // Auto-start stream on mount
   useEffect(() => {
-    // Check if mobile device
-    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-    
-    if (!isMobile) {
-      // Desktop: auto-start
-      const timer = setTimeout(() => {
-        startStream();
-      }, 100);
-      
-      return () => {
-        clearTimeout(timer);
-        const s = videoRef.current?.srcObject as MediaStream | null;
-        if (s) s.getTracks().forEach((t) => t.stop());
-        attachStream(null);
-      };
-    } else {
-      // Mobile: wait for user gesture
-      return () => {
-        const s = videoRef.current?.srcObject as MediaStream | null;
-        if (s) s.getTracks().forEach((t) => t.stop());
-        attachStream(null);
-      };
-    }
+    startStream();
+    return () => {
+      const s = videoRef.current?.srcObject as MediaStream | null;
+      if (s) s.getTracks().forEach((t) => t.stop());
+      attachStream(null);
+    };
   }, [startStream]);
 
   // Run whiteboard detection periodically
@@ -360,10 +391,11 @@ const HostView: React.FC = () => {
         <>
           <video
             ref={videoRef}
-            className="absolute inset-0 w-full h-full object-cover bg-black"
+            className="absolute inset-0 w-full h-full object-cover"
             autoPlay
             playsInline
             muted
+            webkit-playsinline="true"
           />
 
           {/* Hidden canvas for detection */}
@@ -498,10 +530,9 @@ const HostView: React.FC = () => {
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 100, opacity: 0 }}
             transition={{ duration: 0.5 }}
-            className="fixed bottom-0 left-0 right-0 flex items-center justify-center gap-3 sm:gap-4 px-4 sm:px-6 z-50 bg-gradient-to-t from-black/60 via-black/30 to-transparent"
+            className="absolute bottom-0 left-0 right-0 flex items-center justify-center gap-3 sm:gap-4 px-4 sm:px-6 pb-6 sm:pb-8 pt-4 z-10"
             style={{
               paddingBottom: "max(1.5rem, env(safe-area-inset-bottom))",
-              paddingTop: "2rem",
             }}
           >
             {/* Participants Button with Avatars */}
