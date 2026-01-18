@@ -609,9 +609,10 @@ const Room: React.FC = () => {
   const title = searchParams.get("title") || "Untitled Board";
 
   // Connect to WebSocket and get real participants
+  // The 'title' URL param contains the username when joining a room
   const { participants: wsParticipants, isConnected } = useRoomWebSocket({
     joinCode: roomCode,
-    participantName: "Participant", // You can get this from user input or auth
+    participantName: title, // Use the username from URL params
     isHost: false,
   });
 

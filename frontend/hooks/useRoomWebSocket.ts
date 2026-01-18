@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 
 interface Participant {
   id: string;
@@ -11,12 +11,14 @@ interface UseRoomWebSocketProps {
   joinCode: string | null;
   participantName: string;
   isHost?: boolean;
+  onVideoFrame?: (frameData: string) => void;
 }
 
-export function useRoomWebSocket({ joinCode, participantName, isHost = false }: UseRoomWebSocketProps) {
+export function useRoomWebSocket({ joinCode, participantName, isHost = false, onVideoFrame }: UseRoomWebSocketProps) {
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [isConnected, setIsConnected] = useState(false);
   const [roomId, setRoomId] = useState<string | null>(null);
+  const [currentFrame, setCurrentFrame] = useState<string | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const clientId = useRef<string>(Math.random().toString(36).substring(7));
 
@@ -65,7 +67,11 @@ export function useRoomWebSocket({ joinCode, participantName, isHost = false }: 
         // Step 4: Handle incoming messages
         ws.onmessage = (event) => {
           const msg = JSON.parse(event.data);
-          console.log('WebSocket message received:', msg);
+          
+          // Don't log video frames to avoid console spam
+          if (msg.type !== 'video-frame') {
+            console.log('WebSocket message received:', msg);
+          }
 
           switch (msg.type) {
             case 'room-created':
@@ -81,6 +87,16 @@ export function useRoomWebSocket({ joinCode, participantName, isHost = false }: 
             case 'participant-left':
               console.log('Participant left:', msg.participant);
               setParticipants(msg.participants || []);
+              break;
+
+            case 'video-frame':
+              // Handle incoming video frame from host
+              if (msg.frame) {
+                setCurrentFrame(msg.frame);
+                if (onVideoFrame) {
+                  onVideoFrame(msg.frame);
+                }
+              }
               break;
 
             case 'error':
@@ -118,21 +134,33 @@ export function useRoomWebSocket({ joinCode, participantName, isHost = false }: 
         ws.close();
       }
     };
-  }, [joinCode, participantName, isHost]);
+  }, [joinCode, participantName, isHost, onVideoFrame]);
 
   // Helper function to send custom messages
-  const sendMessage = (message: any) => {
+  const sendMessage = useCallback((message: any) => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify(message));
     } else {
       console.warn('WebSocket is not connected');
     }
-  };
+  }, []);
+
+  // Helper function to send video frame (for host)
+  const sendVideoFrame = useCallback((frameData: string) => {
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({
+        type: 'video-frame',
+        frame: frameData,
+      }));
+    }
+  }, []);
 
   return {
     participants,
     isConnected,
     roomId,
     sendMessage,
+    sendVideoFrame,
+    currentFrame,
   };
 }
