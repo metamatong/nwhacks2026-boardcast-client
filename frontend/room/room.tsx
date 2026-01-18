@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useCallback } from "react";
+import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Share,
@@ -13,6 +14,7 @@ import {
   Trash2,
   Plus,
 } from "lucide-react";
+import { useRoomWebSocket } from "@/frontend/hooks/useRoomWebSocket";
 
 interface Snippet {
   id: string;
@@ -595,15 +597,36 @@ const SidebarToggle: React.FC<{ onClick: () => void; isOpen: boolean }> = ({
 );
 
 const Room: React.FC = () => {
+  const searchParams = useSearchParams();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
-  const [roomCode] = useState("ABC-123-XYZ");
-  const [title] = useState("Untitled Board");
   const [snippets, setSnippets] = useState(MOCK_SNIPPETS);
   const [showParticipants, setShowParticipants] = useState(false);
-  const [participants, setParticipants] =
-    useState<Participant[]>(MOCK_PARTICIPANTS);
+
+  // Get room code from URL
+  const roomCode = searchParams.get("id") || "ABC-123-XYZ";
+  const title = searchParams.get("title") || "Untitled Board";
+
+  // Connect to WebSocket and get real participants
+  const { participants: wsParticipants, isConnected } = useRoomWebSocket({
+    joinCode: roomCode,
+    participantName: "Participant", // You can get this from user input or auth
+    isHost: false,
+  });
+
+  // Map WebSocket participants to your UI format
+  const participants: Participant[] = wsParticipants.map((p, index) => ({
+    id: p.id,
+    name: p.name,
+    color: [
+      "bg-blue-500",
+      "bg-purple-500",
+      "bg-green-500",
+      "bg-yellow-500",
+      "bg-red-500",
+    ][index % 5],
+  }));
 
   const handleCopyCode = useCallback(async () => {
     try {
@@ -655,13 +678,21 @@ const Room: React.FC = () => {
   }, []);
 
   const handleKickParticipant = useCallback((id: string) => {
-    setParticipants((prev) => prev.filter((p) => p.id !== id));
+    // TODO: Send kick message via WebSocket
+    // sendMessage({ type: 'kick-participant', participantId: id });
     setShowParticipants(false);
     console.log("Kicked participant:", id);
   }, []);
 
   return (
     <div className="h-screen bg-background text-primary overflow-hidden flex flex-col font-sans">
+      {/* Connection Status Indicator */}
+      {!isConnected && (
+        <div className="bg-yellow-500/20 border-b border-yellow-500/50 px-4 py-2 text-center">
+          <span className="text-xs text-yellow-200">Connecting to room...</span>
+        </div>
+      )}
+
       <Header
         roomCode={roomCode}
         title={title}

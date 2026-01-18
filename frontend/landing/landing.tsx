@@ -59,8 +59,11 @@ export default function Landing() {
           `/room_create?id=${encodeURIComponent(data.join_code)}&title=${encodeURIComponent(data.title)}`,
         );
       } else {
+        // Join existing room - redirect to /room with the room code
         console.log(`Joining room ${roomCode} as ${roomTitle}`);
-        // You can handle joining logic here later
+        router.push(
+          `/room?id=${encodeURIComponent(roomCode)}&title=${encodeURIComponent(roomTitle)}`,
+        );
       }
     } catch (err) {
       setError("Something went wrong. Please try again.");

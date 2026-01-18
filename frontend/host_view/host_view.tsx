@@ -1,10 +1,10 @@
-// HostView.tsx
 "use client";
 
 import React, { useState, useCallback, useRef, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Camera, SwitchCamera, Users, HelpCircle } from "lucide-react";
+import { useRoomWebSocket } from "@/frontend/hooks/useRoomWebSocket";
 
 interface Participant {
   id: string;
@@ -21,16 +21,42 @@ const MOCK_PARTICIPANTS: Participant[] = [
 const HostView: React.FC = () => {
   const searchParams = useSearchParams();
   const [isStreaming, setIsStreaming] = useState(false);
-  const [facingMode, setFacingMode] = useState<"environment" | "user">("environment");
+  const [facingMode, setFacingMode] = useState<"environment" | "user">(
+    "environment",
+  );
   const [showParticipants, setShowParticipants] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
-  const [participants] = useState<Participant[]>(MOCK_PARTICIPANTS);
-  const [detectedRect, setDetectedRect] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
-  
+  const [detectedRect, setDetectedRect] = useState<{
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  } | null>(null);
+
   // Get room details from URL parameters
   const roomCode = searchParams.get("id") || "ABC 123";
   const roomName = searchParams.get("title") || "Untitled Board";
-  
+
+  // Connect to WebSocket and get real participants (HOST)
+  const { participants: wsParticipants, isConnected } = useRoomWebSocket({
+    joinCode: roomCode,
+    participantName: "Host", // Host name
+    isHost: true, // This is the host
+  });
+
+  // Map WebSocket participants to UI format
+  const participants: Participant[] = wsParticipants.map((p, index) => ({
+    id: p.id,
+    name: p.name,
+    color: [
+      "bg-blue-500",
+      "bg-purple-500",
+      "bg-green-500",
+      "bg-yellow-500",
+      "bg-red-500",
+    ][index % 5],
+  }));
+
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const userGestureCaptured = useRef(false);
@@ -58,50 +84,63 @@ const HostView: React.FC = () => {
   };
 
   // Start camera stream safely
-  const startStream = useCallback(async (mode?: "environment" | "user") => {
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      alert("Camera not supported. Use HTTPS/localhost and allow camera access.");
-      return;
-    }
-
-    const current = videoRef.current?.srcObject as MediaStream | null;
-    if (current) current.getTracks().forEach((t) => t.stop());
-
-    const targetMode = mode || facingMode;
-    const constraintsExact: MediaStreamConstraints = {
-      video: { facingMode: { exact: targetMode } as any, width: { ideal: 1280 }, height: { ideal: 720 } },
-      audio: false,
-    };
-    const constraintsIdeal: MediaStreamConstraints = {
-      video: { facingMode: targetMode, width: { ideal: 1280 }, height: { ideal: 720 } },
-      audio: false,
-    };
-
-    try {
-      let stream: MediaStream | null = null;
-      try {
-        stream = await navigator.mediaDevices.getUserMedia(constraintsExact);
-      } catch {
-        stream = await navigator.mediaDevices.getUserMedia(constraintsIdeal);
+  const startStream = useCallback(
+    async (mode?: "environment" | "user") => {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        alert(
+          "Camera not supported. Use HTTPS/localhost and allow camera access.",
+        );
+        return;
       }
 
-      stream.getVideoTracks().forEach((track) => {
-        track.onended = () => {
-          setIsStreaming(false);
-          attachStream(null);
-        };
-      });
+      const current = videoRef.current?.srcObject as MediaStream | null;
+      if (current) current.getTracks().forEach((t) => t.stop());
 
-      attachStream(stream);
-      setIsStreaming(true);
-      console.log("Stream started with facing mode:", targetMode);
-    } catch (error) {
-      console.error("Failed to start stream:", error);
-      alert("Failed to access camera. Check permissions and try again.");
-      setIsStreaming(false);
-      attachStream(null);
-    }
-  }, [facingMode]);
+      const targetMode = mode || facingMode;
+      const constraintsExact: MediaStreamConstraints = {
+        video: {
+          facingMode: { exact: targetMode } as any,
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+        },
+        audio: false,
+      };
+      const constraintsIdeal: MediaStreamConstraints = {
+        video: {
+          facingMode: targetMode,
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+        },
+        audio: false,
+      };
+
+      try {
+        let stream: MediaStream | null = null;
+        try {
+          stream = await navigator.mediaDevices.getUserMedia(constraintsExact);
+        } catch {
+          stream = await navigator.mediaDevices.getUserMedia(constraintsIdeal);
+        }
+
+        stream.getVideoTracks().forEach((track) => {
+          track.onended = () => {
+            setIsStreaming(false);
+            attachStream(null);
+          };
+        });
+
+        attachStream(stream);
+        setIsStreaming(true);
+        console.log("Stream started with facing mode:", targetMode);
+      } catch (error) {
+        console.error("Failed to start stream:", error);
+        alert("Failed to access camera. Check permissions and try again.");
+        setIsStreaming(false);
+        attachStream(null);
+      }
+    },
+    [facingMode],
+  );
 
   // Enhanced whiteboard detection with edge detection and contour analysis
   const detectWhiteboard = useCallback(() => {
@@ -132,24 +171,33 @@ const HostView: React.FC = () => {
     // Grayscale conversion
     for (let i = 0; i < data.length; i += 4) {
       const idx = i / 4;
-      gray[idx] = Math.floor(0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]);
+      gray[idx] = Math.floor(
+        0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2],
+      );
     }
 
     // Simple edge detection using gradient
     for (let y = 1; y < height - 1; y++) {
       for (let x = 1; x < width - 1; x++) {
         const idx = y * width + x;
-        
+
         // Sobel operators
         const gx =
-          -gray[(y - 1) * width + (x - 1)] + gray[(y - 1) * width + (x + 1)] +
-          -2 * gray[y * width + (x - 1)] + 2 * gray[y * width + (x + 1)] +
-          -gray[(y + 1) * width + (x - 1)] + gray[(y + 1) * width + (x + 1)];
-        
+          -gray[(y - 1) * width + (x - 1)] +
+          gray[(y - 1) * width + (x + 1)] +
+          -2 * gray[y * width + (x - 1)] +
+          2 * gray[y * width + (x + 1)] +
+          -gray[(y + 1) * width + (x - 1)] +
+          gray[(y + 1) * width + (x + 1)];
+
         const gy =
-          -gray[(y - 1) * width + (x - 1)] - 2 * gray[(y - 1) * width + x] - gray[(y - 1) * width + (x + 1)] +
-          gray[(y + 1) * width + (x - 1)] + 2 * gray[(y + 1) * width + x] + gray[(y + 1) * width + (x + 1)];
-        
+          -gray[(y - 1) * width + (x - 1)] -
+          2 * gray[(y - 1) * width + x] -
+          gray[(y - 1) * width + (x + 1)] +
+          gray[(y + 1) * width + (x - 1)] +
+          2 * gray[(y + 1) * width + x] +
+          gray[(y + 1) * width + (x + 1)];
+
         const magnitude = Math.sqrt(gx * gx + gy * gy);
         edges[idx] = magnitude > 50 ? 255 : 0;
       }
@@ -158,7 +206,7 @@ const HostView: React.FC = () => {
     // Find bright regions (potential whiteboard)
     const brightThreshold = 160;
     const brightMask = new Uint8Array(width * height);
-    
+
     for (let i = 0; i < gray.length; i++) {
       brightMask[i] = gray[i] > brightThreshold ? 255 : 0;
     }
@@ -166,18 +214,21 @@ const HostView: React.FC = () => {
     // Combine edges and brightness to find whiteboard candidates
     const combined = new Uint8Array(width * height);
     for (let i = 0; i < combined.length; i++) {
-      combined[i] = (brightMask[i] > 0 && edges[i] > 0) ? 255 : 0;
+      combined[i] = brightMask[i] > 0 && edges[i] > 0 ? 255 : 0;
     }
 
     // Find bounding box of largest connected bright region
-    let minX = width, minY = height, maxX = 0, maxY = 0;
+    let minX = width,
+      minY = height,
+      maxX = 0,
+      maxY = 0;
     let pixelCount = 0;
 
     // Sample grid for performance (every 8 pixels)
     for (let y = 0; y < height; y += 8) {
       for (let x = 0; x < width; x += 8) {
         const idx = y * width + x;
-        
+
         // Check if this area is bright
         if (brightMask[idx] > 0) {
           pixelCount++;
@@ -194,16 +245,18 @@ const HostView: React.FC = () => {
     const detectedHeight = maxY - minY;
     const aspectRatio = detectedWidth / Math.max(detectedHeight, 1);
     const area = detectedWidth * detectedHeight;
-    const minArea = (width * height) * 0.1; // At least 10% of frame
-    const maxArea = (width * height) * 0.9; // At most 90% of frame
+    const minArea = width * height * 0.1; // At least 10% of frame
+    const maxArea = width * height * 0.9; // At most 90% of frame
 
     // Check if detection is valid (reasonable size, aspect ratio, and pixel count)
     if (
       pixelCount > 200 &&
       area > minArea &&
       area < maxArea &&
-      aspectRatio > 0.5 && aspectRatio < 3 && // Reasonable aspect ratio
-      detectedWidth > 100 && detectedHeight > 100 // Minimum size
+      aspectRatio > 0.5 &&
+      aspectRatio < 3 && // Reasonable aspect ratio
+      detectedWidth > 100 &&
+      detectedHeight > 100 // Minimum size
     ) {
       // Add padding and ensure within bounds
       const padding = 30;
@@ -211,7 +264,10 @@ const HostView: React.FC = () => {
         x: Math.max(0, minX - padding),
         y: Math.max(0, minY - padding),
         width: Math.min(width - (minX - padding), detectedWidth + padding * 2),
-        height: Math.min(height - (minY - padding), detectedHeight + padding * 2),
+        height: Math.min(
+          height - (minY - padding),
+          detectedHeight + padding * 2,
+        ),
       });
     } else {
       setDetectedRect(null);
@@ -565,27 +621,41 @@ const HostView: React.FC = () => {
               </div>
 
               <div className="space-y-2">
-                <div className="flex items-center gap-3 p-3 bg-background rounded-lg">
-                  <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
-                    <Users className="w-5 h-5 text-primary" />
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-sm font-semibold text-primary">
-                      You (Host)
+                {participants.length > 0 ? (
+                  participants.map((participant) => (
+                    <div
+                      key={participant.id}
+                      className="flex items-center gap-3 p-3 bg-background rounded-lg"
+                    >
+                      <div
+                        className={`w-10 h-10 rounded-full ${participant.color} flex items-center justify-center text-xs font-bold text-white shadow-sm`}
+                      >
+                        {participant.name.charAt(0)}
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm font-semibold text-primary">
+                          {participant.name}
+                          {participant.name === "Host" && " (You)"}
+                        </p>
+                        <p className="text-xs text-muted">
+                          {participant.name === "Host"
+                            ? "Streaming"
+                            : "Viewing"}
+                        </p>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center py-8">
+                    <p className="text-sm text-muted">No participants yet</p>
+                    <p className="text-xs text-muted mt-1">
+                      Share room code:{" "}
+                      <span className="font-mono text-secondary">
+                        {roomCode}
+                      </span>
                     </p>
-                    <p className="text-xs text-muted">Streaming</p>
                   </div>
-                </div>
-
-                <div className="text-center py-8">
-                  <p className="text-sm text-muted">
-                    No other participants yet
-                  </p>
-                  <p className="text-xs text-muted mt-1">
-                    Share room code:{" "}
-                    <span className="font-mono text-secondary">{roomCode}</span>
-                  </p>
-                </div>
+                )}
               </div>
             </motion.div>
           </motion.div>
