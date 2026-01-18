@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useCallback, useRef, useEffect } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Share,
@@ -13,6 +13,9 @@ import {
   ChevronLeft,
   Trash2,
   Plus,
+  AlertCircle,
+  Home,
+  RefreshCw,
 } from "lucide-react";
 import { useRoomWebSocket } from "@/frontend/hooks/useRoomWebSocket";
 
@@ -646,6 +649,7 @@ const SidebarToggle: React.FC<{ onClick: () => void; isOpen: boolean }> = ({
 
 const Room: React.FC = () => {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
@@ -655,7 +659,7 @@ const Room: React.FC = () => {
   const [webrtcStatus, setWebrtcStatus] = useState<string>("idle");
 
   // Get room code from URL
-  const roomCode = searchParams.get("id") || "ABC-123-XYZ";
+  const roomCode = searchParams.get("id");
   const title = searchParams.get("title") || "Untitled Board";
 
   // WebRTC refs
@@ -754,6 +758,7 @@ const Room: React.FC = () => {
   const {
     participants: wsParticipants,
     isConnected,
+    connectionError,
     sendWebRTCSignal,
   } = useRoomWebSocket({
     joinCode: roomCode,
@@ -785,6 +790,7 @@ const Room: React.FC = () => {
   }));
 
   const handleCopyCode = useCallback(async () => {
+    if (!roomCode) return;
     try {
       await navigator.clipboard.writeText(roomCode);
       setCopied(true);
@@ -839,6 +845,132 @@ const Room: React.FC = () => {
     setShowParticipants(false);
     console.log("Kicked participant:", id);
   }, []);
+
+  // Show error page if room code is missing or connection failed
+  if (!roomCode || connectionError) {
+    return (
+      <div
+        className="min-h-screen bg-background text-primary font-sans flex flex-col items-center justify-center px-4"
+        style={{
+          backgroundImage: `radial-gradient(circle, rgba(150, 150, 150, 0.15) 1.5px, transparent 1.5px)`,
+          backgroundSize: "40px 40px",
+        }}
+      >
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          className="w-full max-w-md"
+        >
+          {/* Error Card */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.5, delay: 0.1 }}
+            className="bg-page rounded-xl border border-selected p-8 text-center space-y-6"
+          >
+            {/* Error Icon */}
+            <motion.div
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ duration: 0.5, delay: 0.2 }}
+              className="relative inline-block"
+            >
+              <div className="w-20 h-20 mx-auto rounded-full bg-red-500/10 border border-red-500/30 flex items-center justify-center">
+                <AlertCircle className="w-10 h-10 text-red-500" />
+              </div>
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ duration: 0.3, delay: 0.5 }}
+                className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full border-2 border-page"
+              />
+            </motion.div>
+
+            {/* Error Message */}
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.3 }}
+              className="space-y-2"
+            >
+              <h1 className="text-2xl font-bold text-primary">
+                {connectionError ? "Room Not Found" : "Invalid Room Link"}
+              </h1>
+              <p className="text-secondary text-sm">
+                {connectionError
+                  ? connectionError
+                  : "The room link is missing required information."}
+              </p>
+            </motion.div>
+
+            {/* Error Details */}
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.4 }}
+              className="bg-background/50 border border-red-500/20 rounded-lg p-4 space-y-2"
+            >
+              <p className="text-xs font-semibold text-muted uppercase tracking-wide">
+                {connectionError ? "Error Details" : "Missing Parameters"}
+              </p>
+              <div className="flex flex-wrap justify-center gap-2">
+                {!roomCode && (
+                  <span className="px-3 py-1 bg-red-500/10 border border-red-500/30 rounded-full text-red-400 text-sm font-medium">
+                    Room Code
+                  </span>
+                )}
+                {connectionError && (
+                  <span className="px-3 py-1 bg-red-500/10 border border-red-500/30 rounded-full text-red-400 text-sm font-medium">
+                    Invalid or Expired Code
+                  </span>
+                )}
+              </div>
+            </motion.div>
+
+            {/* Action Buttons */}
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.5 }}
+              className="flex flex-col sm:flex-row gap-3"
+            >
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => router.push("/")}
+                className="flex-1 py-3 px-4 rounded-lg font-semibold bg-selected text-primary hover:bg-hover transition-colors duration-300 cursor-pointer flex items-center justify-center gap-2"
+              >
+                <Home className="w-4 h-4" />
+                Go Home
+              </motion.button>
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => window.location.reload()}
+                className="flex-1 py-3 px-4 rounded-lg font-semibold bg-background border border-selected text-secondary hover:text-primary hover:border-primary/50 transition-colors duration-300 cursor-pointer flex items-center justify-center gap-2"
+              >
+                <RefreshCw className="w-4 h-4" />
+                Try Again
+              </motion.button>
+            </motion.div>
+          </motion.div>
+
+          {/* Footer */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.5, delay: 0.6 }}
+            className="mt-4 text-center"
+          >
+            <p className="text-xs text-muted">
+              Please check the room code and try again, or ask the host for a new link.
+            </p>
+          </motion.div>
+        </motion.div>
+      </div>
+    );
+  }
 
   return (
     <div className="h-screen bg-background text-primary overflow-hidden flex flex-col font-sans">

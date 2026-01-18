@@ -26,6 +26,7 @@ export function useRoomWebSocket({ joinCode, participantName, isHost = false, on
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [isConnected, setIsConnected] = useState(false);
   const [roomId, setRoomId] = useState<string | null>(null);
+  const [connectionError, setConnectionError] = useState<string | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const clientIdRef = useRef<string>(Math.random().toString(36).substring(7));
   const onWebRTCSignalRef = useRef(onWebRTCSignal);
@@ -137,7 +138,7 @@ export function useRoomWebSocket({ joinCode, participantName, isHost = false, on
         };
       } catch (error) {
         console.error('Failed to connect:', error);
-        alert('Failed to join room. Please check the room code.');
+        setConnectionError('Room not found. Please check the room code and try again.');
       }
     };
 
@@ -175,6 +176,7 @@ export function useRoomWebSocket({ joinCode, participantName, isHost = false, on
     participants,
     isConnected,
     roomId,
+    connectionError,
     sendMessage,
     sendWebRTCSignal,
     getClientId,
