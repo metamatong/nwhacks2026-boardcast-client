@@ -3,7 +3,7 @@
 import React, { useState, useCallback, useRef, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Camera, SwitchCamera, Users, HelpCircle } from "lucide-react";
+import { X, Camera, SwitchCamera, HelpCircle, Play } from "lucide-react";
 import { useRoomWebSocket } from "@/frontend/hooks/useRoomWebSocket";
 
 interface Participant {
@@ -15,66 +15,72 @@ interface Participant {
 // ICE servers for WebRTC
 const ICE_SERVERS: RTCConfiguration = {
   iceServers: [
-    { urls: 'stun:stun.l.google.com:19302' },
-    { urls: 'stun:stun1.l.google.com:19302' },
+    { urls: "stun:stun.l.google.com:19302" },
+    { urls: "stun:stun1.l.google.com:19302" },
   ],
 };
 
+// 3-stage flow for mobile compatibility: idle → ready → live
+type Stage = "idle" | "ready" | "live";
+
 const HostView: React.FC = () => {
   const searchParams = useSearchParams();
-  const [isStreaming, setIsStreaming] = useState(false);
+
+  // Simple 3-stage state for mobile compatibility
+  const [stage, setStage] = useState<Stage>("idle");
   const [facingMode, setFacingMode] = useState<"environment" | "user">(
     "environment",
   );
   const [showParticipants, setShowParticipants] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
-  const [detectedRect, setDetectedRect] = useState<{
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-  } | null>(null);
-  const [webrtcStatus, setWebrtcStatus] = useState<string>('idle');
+  const [webrtcStatus, setWebrtcStatus] = useState<string>("idle");
 
   // Get room details from URL parameters
-  const roomCode = searchParams.get("id") || "ABC 123";
+  const roomCode = searchParams.get("id") || "ABC123";
   const roomName = searchParams.get("title") || "Untitled Board";
+
+  // Refs
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
 
   // WebRTC peer connections (one per participant)
   const peerConnectionsRef = useRef<Map<string, RTCPeerConnection>>(new Map());
-  const localStreamRef = useRef<MediaStream | null>(null);
 
   // Handle incoming WebRTC signals
   const handleWebRTCSignal = useCallback(async (signal: any) => {
     const { type, from, sdp, candidate } = signal;
-    
-    // Get or create peer connection for this participant
+
     let pc = peerConnectionsRef.current.get(from);
-    
-    if (!pc && type === 'webrtc-answer') {
-      console.log('No peer connection for answer from:', from);
+
+    if (!pc && type === "webrtc-answer") {
+      console.log("No peer connection for answer from:", from);
       return;
     }
 
-    if (type === 'webrtc-answer' && pc) {
+    if (type === "webrtc-answer" && pc) {
       try {
         await pc.setRemoteDescription(new RTCSessionDescription(sdp));
-        console.log('Set remote description (answer) from:', from);
+        console.log("Set remote description (answer) from:", from);
       } catch (error) {
-        console.error('Error setting remote description:', error);
+        console.error("Error setting remote description:", error);
       }
-    } else if (type === 'webrtc-ice-candidate' && pc && candidate) {
+    } else if (type === "webrtc-ice-candidate" && pc && candidate) {
       try {
         await pc.addIceCandidate(new RTCIceCandidate(candidate));
-        console.log('Added ICE candidate from:', from);
+        console.log("Added ICE candidate from:", from);
       } catch (error) {
-        console.error('Error adding ICE candidate:', error);
+        console.error("Error adding ICE candidate:", error);
       }
     }
   }, []);
 
-  // Connect to WebSocket and get real participants (HOST)
-  const { participants: wsParticipants, isConnected, sendWebRTCSignal, getClientId } = useRoomWebSocket({
+  // Connect to WebSocket
+  const {
+    participants: wsParticipants,
+    isConnected,
+    sendWebRTCSignal,
+    getClientId,
+  } = useRoomWebSocket({
     joinCode: roomCode,
     participantName: "Host",
     isHost: true,
@@ -94,11 +100,6 @@ const HostView: React.FC = () => {
     ][index % 5],
   }));
 
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const userGestureCaptured = useRef(false);
-  const detectionIntervalRef = useRef<NodeJS.Timeout | null>(null);
-
   // Prevent scrolling
   useEffect(() => {
     const prev = document.body.style.overflow;
@@ -108,433 +109,197 @@ const HostView: React.FC = () => {
     };
   }, []);
 
-  // Attach stream to video element
-  const attachStream = (media: MediaStream | null) => {
-    const video = videoRef.current;
-    if (!video) return;
-    video.srcObject = media;
-    if (media) {
-      video.play().catch(() => {});
-    } else {
-      video.pause();
-    }
-  };
+  // Stage 1: Request camera permission (idle → ready)
+  const requestPermission = useCallback(async () => {
+    if (stage !== "idle") return;
 
-  // Start camera stream safely
-  const startStream = useCallback(
-    async (mode?: "environment" | "user") => {
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        alert(
-          "Camera not supported. Use HTTPS/localhost and allow camera access.",
-        );
+    try {
+      const constraints: MediaStreamConstraints = {
+        video: {
+          facingMode: facingMode,
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+        },
+        audio: false,
+      };
+
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      streamRef.current = stream;
+      setStage("ready");
+      console.log("Camera permission granted, stream ready");
+    } catch (error) {
+      console.error("Camera permission denied:", error);
+      alert("Camera access denied. Please allow camera access and try again.");
+    }
+  }, [stage, facingMode]);
+
+  // Stage 2: Go live (ready → live)
+  const goLive = useCallback(() => {
+    if (stage !== "ready" || !streamRef.current || !videoRef.current) return;
+
+    videoRef.current.srcObject = streamRef.current;
+    videoRef.current.play().catch(console.error);
+    setStage("live");
+    console.log("Stream is now live");
+  }, [stage]);
+
+  // Flip camera
+  const flipCamera = useCallback(async () => {
+    const newMode = facingMode === "environment" ? "user" : "environment";
+    setFacingMode(newMode);
+
+    // If we have a stream, restart with new facing mode
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((t) => t.stop());
+
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: newMode,
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+          },
+          audio: false,
+        });
+        streamRef.current = stream;
+
+        if (videoRef.current && stage === "live") {
+          videoRef.current.srcObject = stream;
+          videoRef.current.play().catch(console.error);
+        }
+
+        // Update WebRTC tracks
+        peerConnectionsRef.current.forEach((pc) => {
+          const senders = pc.getSenders();
+          const videoTrack = stream.getVideoTracks()[0];
+          const videoSender = senders.find((s) => s.track?.kind === "video");
+          if (videoSender && videoTrack) {
+            videoSender.replaceTrack(videoTrack);
+          }
+        });
+      } catch (error) {
+        console.error("Failed to flip camera:", error);
+      }
+    }
+  }, [facingMode, stage]);
+
+  // End stream
+  const endStream = useCallback(() => {
+    if (confirm("End stream and return to home?")) {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((t) => t.stop());
+        streamRef.current = null;
+      }
+      peerConnectionsRef.current.forEach((pc) => pc.close());
+      peerConnectionsRef.current.clear();
+      window.location.href = "/";
+    }
+  }, []);
+
+  // Create WebRTC peer connection for a participant
+  const createPeerConnection = useCallback(
+    async (participantId: string) => {
+      if (!streamRef.current) {
+        console.log("No stream available for WebRTC");
         return;
       }
 
-      const current = videoRef.current?.srcObject as MediaStream | null;
-      if (current) current.getTracks().forEach((t) => t.stop());
+      const existingPc = peerConnectionsRef.current.get(participantId);
+      if (existingPc) existingPc.close();
 
-      const targetMode = mode || facingMode;
-      const constraintsExact: MediaStreamConstraints = {
-        video: {
-          facingMode: { exact: targetMode } as any,
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
-        },
-        audio: false,
+      const pc = new RTCPeerConnection(ICE_SERVERS);
+      peerConnectionsRef.current.set(participantId, pc);
+
+      // Add stream tracks
+      streamRef.current.getTracks().forEach((track) => {
+        pc.addTrack(track, streamRef.current!);
+      });
+
+      pc.onicecandidate = (event) => {
+        if (event.candidate) {
+          sendWebRTCSignal({
+            type: "webrtc-ice-candidate",
+            candidate: event.candidate.toJSON(),
+            to: participantId,
+          });
+        }
       };
-      const constraintsIdeal: MediaStreamConstraints = {
-        video: {
-          facingMode: targetMode,
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
-        },
-        audio: false,
+
+      pc.onconnectionstatechange = () => {
+        console.log(`WebRTC state with ${participantId}:`, pc.connectionState);
+        setWebrtcStatus(pc.connectionState);
       };
 
       try {
-        let stream: MediaStream | null = null;
-        try {
-          stream = await navigator.mediaDevices.getUserMedia(constraintsExact);
-        } catch {
-          stream = await navigator.mediaDevices.getUserMedia(constraintsIdeal);
-        }
-
-        stream.getVideoTracks().forEach((track) => {
-          track.onended = () => {
-            setIsStreaming(false);
-            attachStream(null);
-          };
-        });
-
-        attachStream(stream);
-        localStreamRef.current = stream; // Store for WebRTC
-        setIsStreaming(true);
-        console.log("Stream started with facing mode:", targetMode);
-      } catch (error) {
-        console.error("Failed to start stream:", error);
-        alert("Failed to access camera. Check permissions and try again.");
-        setIsStreaming(false);
-        attachStream(null);
-      }
-    },
-    [facingMode],
-  );
-
-  // Enhanced whiteboard detection with edge detection and contour analysis
-  const detectWhiteboard = useCallback(() => {
-    const video = videoRef.current;
-    const canvas = canvasRef.current;
-    if (!video || !canvas || !isStreaming) return;
-
-    const ctx = canvas.getContext("2d", { willReadFrequently: true });
-    if (!ctx) return;
-
-    // Set canvas size to match video
-    canvas.width = video.videoWidth || 640;
-    canvas.height = video.videoHeight || 480;
-
-    // Draw current video frame
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-    // Get image data
-    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    const data = imageData.data;
-    const width = canvas.width;
-    const height = canvas.height;
-
-    // Convert to grayscale and apply edge detection (Sobel-like)
-    const gray = new Uint8Array(width * height);
-    const edges = new Uint8Array(width * height);
-
-    // Grayscale conversion
-    for (let i = 0; i < data.length; i += 4) {
-      const idx = i / 4;
-      gray[idx] = Math.floor(
-        0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2],
-      );
-    }
-
-    // Simple edge detection using gradient
-    for (let y = 1; y < height - 1; y++) {
-      for (let x = 1; x < width - 1; x++) {
-        const idx = y * width + x;
-
-        // Sobel operators
-        const gx =
-          -gray[(y - 1) * width + (x - 1)] +
-          gray[(y - 1) * width + (x + 1)] +
-          -2 * gray[y * width + (x - 1)] +
-          2 * gray[y * width + (x + 1)] +
-          -gray[(y + 1) * width + (x - 1)] +
-          gray[(y + 1) * width + (x + 1)];
-
-        const gy =
-          -gray[(y - 1) * width + (x - 1)] -
-          2 * gray[(y - 1) * width + x] -
-          gray[(y - 1) * width + (x + 1)] +
-          gray[(y + 1) * width + (x - 1)] +
-          2 * gray[(y + 1) * width + x] +
-          gray[(y + 1) * width + (x + 1)];
-
-        const magnitude = Math.sqrt(gx * gx + gy * gy);
-        edges[idx] = magnitude > 50 ? 255 : 0;
-      }
-    }
-
-    // Find bright regions (potential whiteboard)
-    const brightThreshold = 160;
-    const brightMask = new Uint8Array(width * height);
-
-    for (let i = 0; i < gray.length; i++) {
-      brightMask[i] = gray[i] > brightThreshold ? 255 : 0;
-    }
-
-    // Combine edges and brightness to find whiteboard candidates
-    const combined = new Uint8Array(width * height);
-    for (let i = 0; i < combined.length; i++) {
-      combined[i] = brightMask[i] > 0 && edges[i] > 0 ? 255 : 0;
-    }
-
-    // Find bounding box of largest connected bright region
-    let minX = width,
-      minY = height,
-      maxX = 0,
-      maxY = 0;
-    let pixelCount = 0;
-
-    // Sample grid for performance (every 8 pixels)
-    for (let y = 0; y < height; y += 8) {
-      for (let x = 0; x < width; x += 8) {
-        const idx = y * width + x;
-
-        // Check if this area is bright
-        if (brightMask[idx] > 0) {
-          pixelCount++;
-          if (x < minX) minX = x;
-          if (x > maxX) maxX = x;
-          if (y < minY) minY = y;
-          if (y > maxY) maxY = y;
-        }
-      }
-    }
-
-    // Validate detection
-    const detectedWidth = maxX - minX;
-    const detectedHeight = maxY - minY;
-    const aspectRatio = detectedWidth / Math.max(detectedHeight, 1);
-    const area = detectedWidth * detectedHeight;
-    const minArea = width * height * 0.1; // At least 10% of frame
-    const maxArea = width * height * 0.9; // At most 90% of frame
-
-    // Check if detection is valid (reasonable size, aspect ratio, and pixel count)
-    if (
-      pixelCount > 200 &&
-      area > minArea &&
-      area < maxArea &&
-      aspectRatio > 0.5 &&
-      aspectRatio < 3 && // Reasonable aspect ratio
-      detectedWidth > 100 &&
-      detectedHeight > 100 // Minimum size
-    ) {
-      // Add padding and ensure within bounds
-      const padding = 30;
-      setDetectedRect({
-        x: Math.max(0, minX - padding),
-        y: Math.max(0, minY - padding),
-        width: Math.min(width - (minX - padding), detectedWidth + padding * 2),
-        height: Math.min(
-          height - (minY - padding),
-          detectedHeight + padding * 2,
-        ),
-      });
-    } else {
-      setDetectedRect(null);
-    }
-  }, [isStreaming]);
-
-  // Auto-start stream on mount
-  useEffect(() => {
-    startStream();
-    return () => {
-      const s = videoRef.current?.srcObject as MediaStream | null;
-      if (s) s.getTracks().forEach((t) => t.stop());
-      attachStream(null);
-    };
-  }, [startStream]);
-
-  // Run whiteboard detection periodically
-  useEffect(() => {
-    if (isStreaming) {
-      // Run detection every 500ms
-      detectionIntervalRef.current = setInterval(detectWhiteboard, 500);
-    } else {
-      if (detectionIntervalRef.current) {
-        clearInterval(detectionIntervalRef.current);
-        detectionIntervalRef.current = null;
-      }
-      setDetectedRect(null);
-    }
-
-    return () => {
-      if (detectionIntervalRef.current) {
-        clearInterval(detectionIntervalRef.current);
-        detectionIntervalRef.current = null;
-      }
-    };
-  }, [isStreaming, detectWhiteboard]);
-
-  // Create WebRTC peer connection for a new participant
-  const createPeerConnection = useCallback(async (participantId: string) => {
-    if (!localStreamRef.current) {
-      console.log('No local stream available for WebRTC');
-      return;
-    }
-
-    // Close existing connection if any
-    const existingPc = peerConnectionsRef.current.get(participantId);
-    if (existingPc) {
-      existingPc.close();
-    }
-
-    const pc = new RTCPeerConnection(ICE_SERVERS);
-    peerConnectionsRef.current.set(participantId, pc);
-
-    // Add local stream tracks to peer connection
-    localStreamRef.current.getTracks().forEach((track) => {
-      pc.addTrack(track, localStreamRef.current!);
-    });
-
-    // Handle ICE candidates
-    pc.onicecandidate = (event) => {
-      if (event.candidate) {
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);
         sendWebRTCSignal({
-          type: 'webrtc-ice-candidate',
-          candidate: event.candidate.toJSON(),
+          type: "webrtc-offer",
+          sdp: pc.localDescription!,
           to: participantId,
         });
+        console.log("Sent WebRTC offer to:", participantId);
+      } catch (error) {
+        console.error("Error creating offer:", error);
       }
-    };
+    },
+    [sendWebRTCSignal],
+  );
 
-    // Handle connection state changes
-    pc.onconnectionstatechange = () => {
-      console.log(`WebRTC connection state with ${participantId}:`, pc.connectionState);
-      setWebrtcStatus(pc.connectionState);
-    };
-
-    // Create and send offer
-    try {
-      const offer = await pc.createOffer();
-      await pc.setLocalDescription(offer);
-      
-      sendWebRTCSignal({
-        type: 'webrtc-offer',
-        sdp: pc.localDescription!,
-        to: participantId,
-      });
-      
-      console.log('Sent WebRTC offer to:', participantId);
-    } catch (error) {
-      console.error('Error creating offer:', error);
-    }
-  }, [sendWebRTCSignal]);
-
-  // When participants change, create peer connections for new ones
+  // Create peer connections when participants join (only when live)
   useEffect(() => {
-    if (!isStreaming || !isConnected || !localStreamRef.current) return;
+    if (stage !== "live" || !isConnected || !streamRef.current) return;
 
     const myClientId = getClientId();
-    
-    // Create peer connections for each participant (except self)
+
     wsParticipants.forEach((participant) => {
-      if (participant.id !== myClientId && participant.role !== 'host') {
-        // Check if we already have a connection
+      if (participant.id !== myClientId && participant.role !== "host") {
         if (!peerConnectionsRef.current.has(participant.id)) {
-          console.log('Creating peer connection for:', participant.name);
+          console.log("Creating peer connection for:", participant.name);
           createPeerConnection(participant.id);
         }
       }
     });
 
-    // Clean up connections for participants who left
+    // Clean up departed participants
     peerConnectionsRef.current.forEach((pc, participantId) => {
-      const stillExists = wsParticipants.some(p => p.id === participantId);
-      if (!stillExists) {
-        console.log('Closing peer connection for departed participant:', participantId);
+      if (!wsParticipants.some((p) => p.id === participantId)) {
         pc.close();
         peerConnectionsRef.current.delete(participantId);
       }
     });
-  }, [wsParticipants, isStreaming, isConnected, createPeerConnection, getClientId]);
+  }, [wsParticipants, stage, isConnected, createPeerConnection, getClientId]);
 
-  // Cleanup all peer connections on unmount
+  // Cleanup on unmount
   useEffect(() => {
     return () => {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((t) => t.stop());
+      }
       peerConnectionsRef.current.forEach((pc) => pc.close());
       peerConnectionsRef.current.clear();
     };
   }, []);
 
-  const handleUserGesture = useCallback(() => {
-    if (!userGestureCaptured.current && !isStreaming) {
-      userGestureCaptured.current = true;
-      startStream();
-    }
-  }, [isStreaming, startStream]);
-
-  const handleEndStream = useCallback(() => {
-    if (confirm("End stream and return to home?")) {
-      const stream = videoRef.current?.srcObject as MediaStream | null;
-      if (stream) stream.getTracks().forEach((track) => track.stop());
-      setIsStreaming(false);
-      attachStream(null);
-      console.log("Stream ended");
-      // Navigate back to home or room list
-      window.location.href = "/";
-    }
-  }, []);
-
-  const handleFlipCamera = useCallback(async () => {
-    const newMode = facingMode === "environment" ? "user" : "environment";
-    setFacingMode(newMode);
-    if (isStreaming) {
-      await startStream(newMode);
-    }
-  }, [facingMode, isStreaming, startStream]);
-
-  const handleViewParticipants = useCallback(() => {
-    setShowParticipants(true);
-  }, []);
-
-  const handleShowHelp = useCallback(() => {
-    setShowHelp(true);
-  }, []);
-
-  const noStream = !isStreaming;
-
   return (
     <div
       className="h-screen w-full bg-background relative overflow-hidden font-sans"
-      onClick={handleUserGesture}
-      onTouchStart={handleUserGesture}
-      style={
-        noStream
-          ? {
-              backgroundImage:
-                "radial-gradient(circle, rgba(150, 150, 150, 0.15) 1.5px, transparent 1.5px)",
-              backgroundSize: "24px 24px",
-            }
-          : undefined
-      }
+      style={{
+        backgroundImage:
+          stage !== "live"
+            ? "radial-gradient(circle, rgba(150, 150, 150, 0.15) 1.5px, transparent 1.5px)"
+            : undefined,
+        backgroundSize: "24px 24px",
+      }}
     >
-      {/* Camera Stream */}
-      {!noStream && (
-        <>
-          <video
-            ref={videoRef}
-            className="absolute inset-0 w-full h-full object-cover bg-black"
-            autoPlay
-            playsInline
-            muted
-          />
-
-          {/* Hidden canvas for detection */}
-          <canvas ref={canvasRef} className="hidden" />
-
-          {/* Whiteboard detection overlay */}
-          <AnimatePresence>
-            {detectedRect && (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                transition={{ duration: 0.3 }}
-                className="absolute border-4 border-white rounded-lg pointer-events-none z-20 transition-all duration-300"
-                style={{
-                  left: `${(detectedRect.x / (canvasRef.current?.width || 1)) * 100}%`,
-                  top: `${(detectedRect.y / (canvasRef.current?.height || 1)) * 100}%`,
-                  width: `${(detectedRect.width / (canvasRef.current?.width || 1)) * 100}%`,
-                  height: `${(detectedRect.height / (canvasRef.current?.height || 1)) * 100}%`,
-                  boxShadow: "0 0 0 9999px rgba(0, 0, 0, 0.3)",
-                }}
-              >
-                <motion.div
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.3, delay: 0.1 }}
-                  className="absolute -top-8 left-0 bg-white text-black px-3 py-1 rounded-md text-xs font-semibold shadow-lg"
-                >
-                  Whiteboard Detected
-                </motion.div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          <div
-            id="camera-flash"
-            className="absolute inset-0 bg-white opacity-0 transition-opacity duration-150 pointer-events-none z-30"
-          />
-        </>
-      )}
+      {/* Video element - always in DOM for mobile compatibility */}
+      <video
+        ref={videoRef}
+        className={`absolute inset-0 w-full h-full object-cover bg-black ${stage === "live" ? "block" : "hidden"}`}
+        autoPlay
+        playsInline
+        muted
+      />
 
       {/* Top Bar */}
       <motion.div
@@ -560,158 +325,185 @@ const HostView: React.FC = () => {
           >
             <span className="text-xs text-muted">Room Code:</span>
             <code className="text-xs font-mono text-secondary font-semibold tracking-widest">
-              {roomCode.slice(0, 3) + " " + roomCode.slice(3, 6)}
+              {roomCode.length >= 6
+                ? roomCode.slice(0, 3) + " " + roomCode.slice(3, 6)
+                : roomCode}
             </code>
           </motion.div>
         </div>
 
-        {/* Help Button */}
-        {!noStream && (
+        {stage === "live" && (
           <motion.button
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.3, delay: 0.4 }}
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            onClick={(e) => {
-              e.stopPropagation();
-              handleShowHelp();
-            }}
-            className="w-10 h-10 rounded-full border border-selected flex items-center justify-center cursor-pointer bg-background/50 backdrop-blur-sm hover:bg-background/70 transition-all"
-            aria-label="Help & Tips"
+            onClick={() => setShowHelp(true)}
+            className="w-10 h-10 rounded-full border border-selected flex items-center justify-center cursor-pointer bg-background/50 backdrop-blur-sm"
           >
             <HelpCircle className="w-5 h-5 text-primary" />
           </motion.button>
         )}
       </motion.div>
 
-      {/* Waiting State */}
+      {/* Stage: Idle - Request Permission */}
       <AnimatePresence>
-        {noStream && (
+        {stage === "idle" && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.5 }}
             className="absolute inset-0 flex items-center justify-center z-10"
           >
             <div className="text-center space-y-6 p-8">
               <motion.div
                 initial={{ scale: 0.8, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
-                transition={{ duration: 0.5, delay: 0.2 }}
+                transition={{ delay: 0.2 }}
               >
                 <Camera className="w-20 h-20 text-muted mx-auto" />
               </motion.div>
               <motion.div
                 initial={{ y: 20, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
-                transition={{ duration: 0.5, delay: 0.3 }}
+                transition={{ delay: 0.3 }}
                 className="space-y-2"
               >
                 <p className="text-secondary text-lg font-semibold">
-                  No Camera Stream
+                  Start Streaming
                 </p>
                 <p className="text-muted text-sm">
-                  Tap anywhere to start streaming
+                  Tap below to allow camera access
                 </p>
               </motion.div>
+              <motion.button
+                initial={{ y: 20, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ delay: 0.4 }}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={requestPermission}
+                className="px-8 py-4 bg-blue-500 text-white rounded-xl font-semibold text-lg shadow-lg cursor-pointer"
+              >
+                Allow Camera
+              </motion.button>
             </div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Bottom Controls */}
+      {/* Stage: Ready - Go Live */}
       <AnimatePresence>
-        {!noStream && (
+        {stage === "ready" && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 flex items-center justify-center z-10"
+          >
+            <div className="text-center space-y-6 p-8">
+              <motion.div
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ delay: 0.1 }}
+                className="w-20 h-20 bg-green-500/20 rounded-full flex items-center justify-center mx-auto"
+              >
+                <Play className="w-10 h-10 text-green-500" />
+              </motion.div>
+              <motion.div
+                initial={{ y: 20, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ delay: 0.2 }}
+                className="space-y-2"
+              >
+                <p className="text-secondary text-lg font-semibold">
+                  Camera Ready!
+                </p>
+                <p className="text-muted text-sm">
+                  Tap to start streaming to participants
+                </p>
+              </motion.div>
+              <motion.button
+                initial={{ y: 20, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ delay: 0.3 }}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={goLive}
+                className="px-8 py-4 bg-green-500 text-white rounded-xl font-semibold text-lg shadow-lg cursor-pointer"
+              >
+                Go Live
+              </motion.button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Stage: Live - Bottom Controls */}
+      <AnimatePresence>
+        {stage === "live" && (
           <motion.div
             initial={{ y: 100, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 100, opacity: 0 }}
-            transition={{ duration: 0.5 }}
             className="absolute bottom-8 left-0 right-0 flex items-center justify-center gap-4 px-6 z-10"
+            style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
           >
-            {/* Participants Button with Avatars */}
+            {/* Participants Button */}
             <motion.button
               initial={{ x: -50, opacity: 0 }}
               animate={{ x: 0, opacity: 1 }}
-              transition={{ duration: 0.4, delay: 0.1 }}
+              transition={{ delay: 0.1 }}
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              onClick={(e) => {
-                e.stopPropagation();
-                handleViewParticipants();
-              }}
-              className="px-4 h-16 relative rounded-full border border-selected flex items-center justify-center shadow-xl cursor-pointer overflow-visible transition-transform backdrop-blur-sm"
-              aria-label="View Participants"
-              style={{
-                backgroundColor: "rgba(30, 30, 30, 0.8)",
-                backgroundImage:
-                  "radial-gradient(circle, rgba(150,150,150,0.15) 1.5px, transparent 1.5px)",
-                backgroundSize: "24px 24px",
-              }}
+              onClick={() => setShowParticipants(true)}
+              className="px-4 h-16 rounded-full border border-selected flex items-center justify-center shadow-xl cursor-pointer backdrop-blur-sm"
+              style={{ backgroundColor: "rgba(30, 30, 30, 0.8)" }}
             >
               <div className="flex -space-x-2">
-                {participants.slice(0, 3).map((participant, idx) => (
+                {participants.slice(0, 3).map((p, idx) => (
                   <div
-                    key={participant.id}
-                    className={`w-8 h-8 rounded-full ${participant.color} border-2 border-page flex items-center justify-center text-xs font-bold text-white shadow-sm`}
+                    key={p.id}
+                    className={`w-8 h-8 rounded-full ${p.color} border-2 border-page flex items-center justify-center text-xs font-bold text-white`}
                     style={{ zIndex: 3 - idx }}
-                    title={participant.name}
                   >
-                    {participant.name.charAt(0)}
+                    {p.name.charAt(0)}
                   </div>
                 ))}
+                {participants.length === 0 && (
+                  <div className="w-8 h-8 rounded-full bg-gray-600 border-2 border-page flex items-center justify-center text-xs text-white">
+                    0
+                  </div>
+                )}
               </div>
-              <span className="absolute inset-0 bg-white opacity-0 hover:opacity-5 transition-opacity rounded-full pointer-events-none" />
             </motion.button>
 
             {/* End Stream Button */}
             <motion.button
               initial={{ y: 50, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
-              transition={{ duration: 0.4, delay: 0.2 }}
+              transition={{ delay: 0.2 }}
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              onClick={(e) => {
-                e.stopPropagation();
-                handleEndStream();
-              }}
-              className="w-20 h-20 relative rounded-full border border-selected flex items-center justify-center shadow-xl cursor-pointer overflow-hidden transition-transform backdrop-blur-sm"
-              aria-label="End Stream"
-              style={{
-                backgroundColor: "rgba(30, 30, 30, 0.8)",
-                backgroundImage:
-                  "radial-gradient(circle, rgba(150,150,150,0.15) 1.5px, transparent 1.5px)",
-                backgroundSize: "24px 24px",
-              }}
+              onClick={endStream}
+              className="w-20 h-20 rounded-full border border-selected flex items-center justify-center shadow-xl cursor-pointer backdrop-blur-sm"
+              style={{ backgroundColor: "rgba(30, 30, 30, 0.8)" }}
             >
               <X className="w-7 h-7 text-primary" />
-              <span className="absolute inset-0 bg-white opacity-0 hover:opacity-5 transition-opacity rounded-full pointer-events-none" />
             </motion.button>
 
             {/* Flip Camera Button */}
             <motion.button
               initial={{ x: 50, opacity: 0 }}
               animate={{ x: 0, opacity: 1 }}
-              transition={{ duration: 0.4, delay: 0.1 }}
+              transition={{ delay: 0.1 }}
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              onClick={(e) => {
-                e.stopPropagation();
-                handleFlipCamera();
-              }}
-              className="w-16 h-16 relative rounded-full border border-selected flex items-center justify-center shadow-xl cursor-pointer overflow-hidden transition-transform backdrop-blur-sm"
-              aria-label="Flip Camera"
-              style={{
-                backgroundColor: "rgba(30, 30, 30, 0.8)",
-                backgroundImage:
-                  "radial-gradient(circle, rgba(150,150,150,0.15) 1.5px, transparent 1.5px)",
-                backgroundSize: "24px 24px",
-              }}
+              onClick={flipCamera}
+              className="w-16 h-16 rounded-full border border-selected flex items-center justify-center shadow-xl cursor-pointer backdrop-blur-sm"
+              style={{ backgroundColor: "rgba(30, 30, 30, 0.8)" }}
             >
               <SwitchCamera className="w-6 h-6 text-primary" />
-              <span className="absolute inset-0 bg-white opacity-0 hover:opacity-5 transition-opacity rounded-full pointer-events-none" />
             </motion.button>
           </motion.div>
         )}
@@ -724,18 +516,13 @@ const HostView: React.FC = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.3 }}
             className="absolute inset-0 bg-background/90 backdrop-blur-md z-40 flex items-center justify-center p-4"
-            onClick={(e) => {
-              e.stopPropagation();
-              setShowParticipants(false);
-            }}
+            onClick={() => setShowParticipants(false)}
           >
             <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              transition={{ duration: 0.3 }}
               className="bg-page rounded-xl border border-selected p-6 max-w-md w-full space-y-4"
               onClick={(e) => e.stopPropagation()}
             >
@@ -743,33 +530,30 @@ const HostView: React.FC = () => {
                 <h2 className="text-xl font-bold text-primary">Participants</h2>
                 <button
                   onClick={() => setShowParticipants(false)}
-                  className="w-8 h-8 rounded-full hover:bg-background flex items-center justify-center transition-colors"
+                  className="w-8 h-8 rounded-full hover:bg-background flex items-center justify-center"
                 >
                   <X className="w-5 h-5 text-muted" />
                 </button>
               </div>
-
               <div className="space-y-2">
                 {participants.length > 0 ? (
-                  participants.map((participant) => (
+                  participants.map((p) => (
                     <div
-                      key={participant.id}
+                      key={p.id}
                       className="flex items-center gap-3 p-3 bg-background rounded-lg"
                     >
                       <div
-                        className={`w-10 h-10 rounded-full ${participant.color} flex items-center justify-center text-xs font-bold text-white shadow-sm`}
+                        className={`w-10 h-10 rounded-full ${p.color} flex items-center justify-center text-xs font-bold text-white`}
                       >
-                        {participant.name.charAt(0)}
+                        {p.name.charAt(0)}
                       </div>
                       <div className="flex-1">
                         <p className="text-sm font-semibold text-primary">
-                          {participant.name}
-                          {participant.name === "Host" && " (You)"}
+                          {p.name}
+                          {p.name === "Host" && " (You)"}
                         </p>
                         <p className="text-xs text-muted">
-                          {participant.name === "Host"
-                            ? "Streaming"
-                            : "Viewing"}
+                          {p.name === "Host" ? "Streaming" : "Viewing"}
                         </p>
                       </div>
                     </div>
@@ -798,73 +582,42 @@ const HostView: React.FC = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.3 }}
             className="absolute inset-0 bg-background/90 backdrop-blur-md z-40 flex items-center justify-center p-4"
-            onClick={(e) => {
-              e.stopPropagation();
-              setShowHelp(false);
-            }}
+            onClick={() => setShowHelp(false)}
           >
             <motion.div
-              initial={{ scale: 0.9, opacity: 0, y: 20 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.9, opacity: 0, y: 20 }}
-              transition={{ duration: 0.3 }}
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
               className="bg-page rounded-xl border border-selected p-6 max-w-md w-full space-y-4 max-h-[80vh] overflow-y-auto"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-center justify-between">
-                <h2 className="text-xl font-bold text-primary">
-                  Stream Quality Tips
-                </h2>
+                <h2 className="text-xl font-bold text-primary">Stream Tips</h2>
                 <button
                   onClick={() => setShowHelp(false)}
-                  className="w-8 h-8 rounded-full hover:bg-background flex items-center justify-center transition-colors"
+                  className="w-8 h-8 rounded-full hover:bg-background flex items-center justify-center"
                 >
                   <X className="w-5 h-5 text-muted" />
                 </button>
               </div>
-
               <div className="space-y-4 text-sm">
                 <div className="bg-background/50 border border-primary/30 rounded-lg p-4 space-y-2">
                   <h3 className="font-semibold text-primary">
                     📱 Camera Setup
                   </h3>
                   <ul className="space-y-1.5 text-muted">
-                    <li>• Use a phone stand or tripod for stability</li>
-                    <li>• Position camera directly above the whiteboard</li>
-                    <li>• Ensure the entire board is visible in frame</li>
-                    <li>• Keep camera at least 2-3 feet from the board</li>
+                    <li>• Use a phone stand or tripod</li>
+                    <li>• Position camera above the whiteboard</li>
+                    <li>• Ensure the board is fully visible</li>
                   </ul>
                 </div>
-
                 <div className="bg-background/50 border border-primary/30 rounded-lg p-4 space-y-2">
                   <h3 className="font-semibold text-primary">💡 Lighting</h3>
                   <ul className="space-y-1.5 text-muted">
-                    <li>• Use bright, even lighting across the board</li>
-                    <li>• Avoid direct sunlight causing glare</li>
-                    <li>• Position lights to minimize shadows</li>
-                    <li>• Turn on overhead lights if available</li>
-                  </ul>
-                </div>
-
-                <div className="bg-background/50 border border-primary/30 rounded-lg p-4 space-y-2">
-                  <h3 className="font-semibold text-primary">🌐 Connection</h3>
-                  <ul className="space-y-1.5 text-muted">
-                    <li>• Use WiFi instead of cellular data if possible</li>
-                    <li>• Close other apps to free up bandwidth</li>
-                    <li>• Stay close to your WiFi router</li>
-                    <li>• Restart the stream if quality degrades</li>
-                  </ul>
-                </div>
-
-                <div className="bg-background/50 border border-primary/30 rounded-lg p-4 space-y-2">
-                  <h3 className="font-semibold text-primary">✏️ Board Tips</h3>
-                  <ul className="space-y-1.5 text-muted">
-                    <li>• Use dark markers for better contrast</li>
-                    <li>• Clean the board before starting</li>
-                    <li>• Write larger than usual for clarity</li>
-                    <li>• Avoid standing in front of the camera</li>
+                    <li>• Use bright, even lighting</li>
+                    <li>• Avoid direct sunlight glare</li>
+                    <li>• Minimize shadows</li>
                   </ul>
                 </div>
               </div>
