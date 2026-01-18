@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ArrowDownTrayIcon,
   ShareIcon,
@@ -11,19 +11,48 @@ import { BsFiletypePdf } from "react-icons/bs";
 type Action = "download" | "share" | "pdf" | null;
 
 export default function NoteOptions() {
-  const [clicked, setClicked] = useState<Action>(null);
+  const [hovered, setHovered] = useState<Action>(null); // controls helper text
+  const [clicked, setClicked] = useState<Action>(null); // controls showing check circle on click
+  const timeoutRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current !== null) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, []);
+
+  const handleMouseEnter = (action: Action) => setHovered(action);
+  const handleMouseLeave = () => setHovered(null);
+  const handleFocus = (action: Action) => setHovered(action);
+  const handleBlur = () => setHovered(null);
 
   const handleClick = (action: Action) => {
-    if (clicked) return;
+    if (clicked) return; // ignore while another action is in clicked state
 
     setClicked(action);
-    setTimeout(() => setClicked(null), 1500);
+
+    if (timeoutRef.current !== null) {
+      clearTimeout(timeoutRef.current);
+    }
+
+    // Show check circle for 1.5 seconds
+    timeoutRef.current = window.setTimeout(() => {
+      setClicked(null);
+      timeoutRef.current = null;
+    }, 1500);
   };
 
   const renderIcon = (action: Action, Icon: any, label: string) => (
     <button
+      onMouseEnter={() => handleMouseEnter(action)}
+      onMouseLeave={handleMouseLeave}
+      onFocus={() => handleFocus(action)}
+      onBlur={handleBlur}
       onClick={() => handleClick(action)}
       title={label}
+      aria-label={label}
       className="flex flex-col items-center gap-2 px-4 py-2 rounded-lg text-sm text-primary hover:text-blue-500 transition-colors cursor-pointer"
     >
       <div className="relative h-10 w-10 flex items-center justify-center shadow-sm">
@@ -38,18 +67,20 @@ export default function NoteOptions() {
           }`}
         />
       </div>
+
+      {/* Always show the label (no hover-only visibility) */}
       <span className="text-xs text-secondary">{label}</span>
     </button>
   );
 
   const helperText =
-    clicked === "download"
+    hovered === "download"
       ? "Your notes will be saved in a high-quality format, ready to review offline."
-      : clicked === "share"
+      : hovered === "share"
         ? "Share a link so others can view your notes in real time."
-        : clicked === "pdf"
+        : hovered === "pdf"
           ? "Export a clean, printable PDF version of your notes."
-          : "Your notes are all set choose an option above!";
+          : "Your notes are all set — choose an option above!";
 
   return (
     <div
@@ -90,7 +121,7 @@ export default function NoteOptions() {
             {helperText}
           </p>
 
-          <button className="mt-2 w-full py-3 px-4 rounded-lg font-semibold bg-primary text-background hover:opacity-85 transition-all cursor-pointer text-sm">
+          <button className="mt-2 w-full py-3 px-4 rounded-lg font-semibold bg-blue-500 text-background hover:opacity-85 transition-all cursor-pointer text-sm">
             Sign in to unlock these options
           </button>
 
