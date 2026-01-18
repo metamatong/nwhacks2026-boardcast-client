@@ -36,8 +36,16 @@ export default function NoteOptions() {
   );
 
   return (
-    <div className="min-h-screen bg-background text-primary font-sans w-full flex flex-col justify-center items-center">
-      <div className="max-w-md text-center">
+    <div
+      className="min-h-screen bg-background text-primary font-sans w-full flex flex-col justify-center items-center relative"
+      style={{
+        backgroundImage: `
+          radial-gradient(circle, rgba(150, 150, 150, 0.15) 1.5px, transparent 1.5px)
+        `,
+        backgroundSize: "40px 40px",
+      }}
+    >
+      <div className="max-w-md text-center z-10">
         <h1 className="text-5xl font-bold text-primary mb-2">Notes Saved!</h1>
         <p className="text-lg text-secondary">
           Sign in to download, share, or save as PDF

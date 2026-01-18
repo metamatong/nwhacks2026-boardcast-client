@@ -44,7 +44,6 @@ export default function Landing() {
         backgroundImage: `
           radial-gradient(circle, rgba(150, 150, 150, 0.15) 1.5px, transparent 1.5px)
         `,
-        backgroundSize: "40px 40px",
       }}
     >
       <div className="absolute top-4 left-4 flex items-center gap-2 bg-background/70 px-3 py-1 rounded-md text-xs text-primary shadow-md z-20">
