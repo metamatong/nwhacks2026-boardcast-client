@@ -119,7 +119,7 @@ export default function RoomCreatePage() {
               "• Keep this tab open while streaming your board.",
               "• Ensure your phone sits securely before starting.",
               "• The whole whiteboard should be captured on camera.",
-              "• Share the room code with others.",
+              "• Share the room code with others to display live notes.",
             ].map((tip, index) => (
               <motion.p
                 key={index}
