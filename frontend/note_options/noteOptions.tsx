@@ -14,12 +14,17 @@ type Action = "download" | "share" | "pdf" | null;
 export default function NoteOptions() {
   const [hovered, setHovered] = useState<Action>(null);
   const [clicked, setClicked] = useState<Action>(null);
+  const [shareMessage, setShareMessage] = useState<string>("");
   const timeoutRef = useRef<number | null>(null);
+  const shareTimeoutRef = useRef<number | null>(null);
 
   useEffect(() => {
     return () => {
       if (timeoutRef.current !== null) {
         clearTimeout(timeoutRef.current);
+      }
+      if (shareTimeoutRef.current !== null) {
+        clearTimeout(shareTimeoutRef.current);
       }
     };
   }, []);
@@ -81,6 +86,43 @@ export default function NoteOptions() {
     }
   };
 
+  const shareNotes = async () => {
+    try {
+      const shareUrl = `${window.location.origin}/note_options`;
+
+      if (navigator.share) {
+        await navigator.share({
+          title: "Boardcast Notes",
+          text: "Check out my whiteboard notes from Boardcast!",
+          url: shareUrl,
+        });
+        setShareMessage("Shared successfully!");
+      } else {
+        await navigator.clipboard.writeText(shareUrl);
+        setShareMessage("Link copied to clipboard!");
+      }
+
+      if (shareTimeoutRef.current !== null) {
+        clearTimeout(shareTimeoutRef.current);
+      }
+      shareTimeoutRef.current = window.setTimeout(() => {
+        setShareMessage("");
+        shareTimeoutRef.current = null;
+      }, 3000);
+    } catch (error) {
+      console.error("Error sharing:", error);
+      setShareMessage("Unable to share");
+
+      if (shareTimeoutRef.current !== null) {
+        clearTimeout(shareTimeoutRef.current);
+      }
+      shareTimeoutRef.current = window.setTimeout(() => {
+        setShareMessage("");
+        shareTimeoutRef.current = null;
+      }, 3000);
+    }
+  };
+
   const handleClick = (action: Action) => {
     if (clicked) return;
 
@@ -88,6 +130,8 @@ export default function NoteOptions() {
       downloadImage();
     } else if (action === "pdf") {
       downloadPDF();
+    } else if (action === "share") {
+      shareNotes();
     }
 
     setClicked(action);
@@ -111,9 +155,9 @@ export default function NoteOptions() {
       onClick={() => handleClick(action)}
       title={label}
       aria-label={label}
-      className="flex flex-col items-center gap-2 px-4 py-2 rounded-lg text-sm text-primary hover:text-blue-500 transition-colors cursor-pointer"
+      className="flex flex-col items-center gap-2 px-4 py-2 rounded-lg text-sm text-primary hover:text-blue-500 transition-colors cursor-pointer mt-1"
     >
-      <div className="relative h-10 w-10 flex items-center justify-center">
+      <div className="relative h-6 w-14 pt-1 flex items-center justify-center">
         <Icon
           className={`absolute h-6 w-6 transition-opacity duration-300 ${
             clicked === action ? "opacity-0" : "opacity-100"
@@ -130,8 +174,9 @@ export default function NoteOptions() {
     </button>
   );
 
-  const helperText =
-    hovered === "download"
+  const helperText = shareMessage
+    ? shareMessage
+    : hovered === "download"
       ? "Your notes will be saved in a high-quality format, ready to review offline."
       : hovered === "share"
         ? "Share a link so others can view your notes in real time."
