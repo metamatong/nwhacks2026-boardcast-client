@@ -19,8 +19,8 @@ import { useRoomWebSocket } from "@/frontend/hooks/useRoomWebSocket";
 // ICE servers for WebRTC
 const ICE_SERVERS: RTCConfiguration = {
   iceServers: [
-    { urls: 'stun:stun.l.google.com:19302' },
-    { urls: 'stun:stun1.l.google.com:19302' },
+    { urls: "stun:stun.l.google.com:19302" },
+    { urls: "stun:stun1.l.google.com:19302" },
   ],
 };
 
@@ -148,7 +148,7 @@ const Header: React.FC<{
               Room Code
             </span>
             <code className="font-mono text-sm text-primary font-bold tracking-[0.3em]">
-              {roomCode}
+              {roomCode.slice(0, 3) + " " + roomCode.slice(3, 6)}
             </code>
           </div>
           <motion.button
@@ -287,9 +287,9 @@ const WhiteboardArea: React.FC<{
         autoPlay
         playsInline
         muted={false}
-        className={`w-full h-full object-contain ${hasStream ? 'block' : 'hidden'}`}
+        className={`w-full h-full object-contain ${hasStream ? "block" : "hidden"}`}
       />
-      
+
       {!hasStream && (
         // Show waiting state
         <div className="text-center space-y-6 p-8">
@@ -309,12 +309,16 @@ const WhiteboardArea: React.FC<{
             className="space-y-2"
           >
             <p className="text-secondary text-lg font-semibold">
-              {!isConnected ? "Connecting..." : webrtcStatus === 'connected' ? "Stream Starting..." : "Waiting for Host"}
+              {!isConnected
+                ? "Connecting..."
+                : webrtcStatus === "connected"
+                  ? "Stream Starting..."
+                  : "Waiting for Host"}
             </p>
             <p className="text-muted text-sm max-w-md">
               {!isConnected
                 ? "Establishing connection to the room..."
-                : webrtcStatus === 'connecting'
+                : webrtcStatus === "connecting"
                   ? "Establishing peer-to-peer connection..."
                   : "The host will start streaming the whiteboard soon"}
             </p>
@@ -325,14 +329,23 @@ const WhiteboardArea: React.FC<{
             transition={{ duration: 0.5, delay: 0.7 }}
             className="flex items-center justify-center gap-2 text-xs text-muted"
           >
-            <div className={`w-2 h-2 rounded-full animate-pulse ${
-              webrtcStatus === 'connected' ? 'bg-green-500' :
-              isConnected ? 'bg-blue-500' : 'bg-yellow-500'
-            }`} />
+            <div
+              className={`w-2 h-2 rounded-full animate-pulse ${
+                webrtcStatus === "connected"
+                  ? "bg-green-500"
+                  : isConnected
+                    ? "bg-blue-500"
+                    : "bg-yellow-500"
+              }`}
+            />
             <span>
-              {webrtcStatus === 'connected' ? "WebRTC Connected" :
-               webrtcStatus === 'connecting' ? "WebRTC Connecting..." :
-               isConnected ? "Room Connected - Waiting for stream..." : "Connecting..."}
+              {webrtcStatus === "connected"
+                ? "WebRTC Connected"
+                : webrtcStatus === "connecting"
+                  ? "WebRTC Connecting..."
+                  : isConnected
+                    ? "Room Connected - Waiting for stream..."
+                    : "Connecting..."}
             </span>
           </motion.div>
         </div>
@@ -639,7 +652,7 @@ const Room: React.FC = () => {
   const [snippets, setSnippets] = useState(MOCK_SNIPPETS);
   const [showParticipants, setShowParticipants] = useState(false);
   const [hasStream, setHasStream] = useState(false);
-  const [webrtcStatus, setWebrtcStatus] = useState<string>('idle');
+  const [webrtcStatus, setWebrtcStatus] = useState<string>("idle");
 
   // Get room code from URL
   const roomCode = searchParams.get("id") || "ABC-123-XYZ";
@@ -653,8 +666,8 @@ const Room: React.FC = () => {
   // Handle incoming WebRTC signals
   const handleWebRTCSignal = useCallback(async (signal: any) => {
     const { type, from, sdp, candidate } = signal;
-    
-    if (type === 'webrtc-offer') {
+
+    if (type === "webrtc-offer") {
       // Received offer from host - create answer
       try {
         // Close existing connection if any
@@ -667,7 +680,7 @@ const Room: React.FC = () => {
 
         // Handle incoming tracks (video from host)
         pc.ontrack = (event) => {
-          console.log('Received remote track:', event.track.kind);
+          console.log("Received remote track:", event.track.kind);
           if (videoRef.current && event.streams[0]) {
             videoRef.current.srcObject = event.streams[0];
             setHasStream(true);
@@ -678,7 +691,7 @@ const Room: React.FC = () => {
         pc.onicecandidate = (event) => {
           if (event.candidate) {
             sendWebRTCSignal({
-              type: 'webrtc-ice-candidate',
+              type: "webrtc-ice-candidate",
               candidate: event.candidate.toJSON(),
               to: from,
             });
@@ -687,9 +700,12 @@ const Room: React.FC = () => {
 
         // Handle connection state changes
         pc.onconnectionstatechange = () => {
-          console.log('WebRTC connection state:', pc.connectionState);
+          console.log("WebRTC connection state:", pc.connectionState);
           setWebrtcStatus(pc.connectionState);
-          if (pc.connectionState === 'disconnected' || pc.connectionState === 'failed') {
+          if (
+            pc.connectionState === "disconnected" ||
+            pc.connectionState === "failed"
+          ) {
             setHasStream(false);
           }
         };
@@ -708,24 +724,24 @@ const Room: React.FC = () => {
         await pc.setLocalDescription(answer);
 
         sendWebRTCSignal({
-          type: 'webrtc-answer',
+          type: "webrtc-answer",
           sdp: pc.localDescription!,
           to: from,
         });
 
-        console.log('Sent WebRTC answer to host');
+        console.log("Sent WebRTC answer to host");
       } catch (error) {
-        console.error('Error handling WebRTC offer:', error);
+        console.error("Error handling WebRTC offer:", error);
       }
-    } else if (type === 'webrtc-ice-candidate' && candidate) {
+    } else if (type === "webrtc-ice-candidate" && candidate) {
       // Add ICE candidate
       const pc = peerConnectionRef.current;
       if (pc && pc.remoteDescription) {
         try {
           await pc.addIceCandidate(new RTCIceCandidate(candidate));
-          console.log('Added ICE candidate from host');
+          console.log("Added ICE candidate from host");
         } catch (error) {
-          console.error('Error adding ICE candidate:', error);
+          console.error("Error adding ICE candidate:", error);
         }
       } else {
         // Queue candidate if remote description not set yet
@@ -735,7 +751,11 @@ const Room: React.FC = () => {
   }, []);
 
   // Connect to WebSocket and get real participants
-  const { participants: wsParticipants, isConnected, sendWebRTCSignal } = useRoomWebSocket({
+  const {
+    participants: wsParticipants,
+    isConnected,
+    sendWebRTCSignal,
+  } = useRoomWebSocket({
     joinCode: roomCode,
     participantName: title,
     isHost: false,
