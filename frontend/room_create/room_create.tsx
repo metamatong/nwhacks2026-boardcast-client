@@ -3,7 +3,7 @@
 import { useSearchParams, useRouter } from "next/navigation";
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Copy, Check } from "lucide-react";
+import { Copy, Check, AlertCircle, Home, RefreshCw } from "lucide-react";
 
 export default function RoomCreatePage() {
   const searchParams = useSearchParams();
@@ -27,8 +27,123 @@ export default function RoomCreatePage() {
 
   if (!id || !title) {
     return (
-      <div className="min-h-screen flex items-center justify-center text-red-500 font-sans bg-background">
-        <p className="text-lg">Failed to load room. Missing ID or title.</p>
+      <div
+        className="min-h-screen bg-background text-primary font-sans flex flex-col items-center justify-center px-4"
+        style={{
+          backgroundImage: `radial-gradient(circle, rgba(150, 150, 150, 0.15) 1.5px, transparent 1.5px)`,
+          backgroundSize: "40px 40px",
+        }}
+      >
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          className="w-full max-w-md"
+        >
+          {/* Error Card */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.5, delay: 0.1 }}
+            className="bg-page rounded-xl border border-selected p-8 text-center space-y-6"
+          >
+            {/* Error Icon */}
+            <motion.div
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ duration: 0.5, delay: 0.2 }}
+              className="relative inline-block"
+            >
+              <div className="w-20 h-20 mx-auto rounded-full bg-red-500/10 border border-red-500/30 flex items-center justify-center">
+                <AlertCircle className="w-10 h-10 text-red-500" />
+              </div>
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ duration: 0.3, delay: 0.5 }}
+                className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full border-2 border-page"
+              />
+            </motion.div>
+
+            {/* Error Message */}
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.3 }}
+              className="space-y-2"
+            >
+              <h1 className="text-2xl font-bold text-primary">
+                Failed to Load Room
+              </h1>
+              <p className="text-secondary text-sm">
+                The room could not be loaded because required information is missing.
+              </p>
+            </motion.div>
+
+            {/* Missing Info Details */}
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.4 }}
+              className="bg-background/50 border border-red-500/20 rounded-lg p-4 space-y-2"
+            >
+              <p className="text-xs font-semibold text-muted uppercase tracking-wide">
+                Missing Parameters
+              </p>
+              <div className="flex flex-wrap justify-center gap-2">
+                {!id && (
+                  <span className="px-3 py-1 bg-red-500/10 border border-red-500/30 rounded-full text-red-400 text-sm font-medium">
+                    Room ID
+                  </span>
+                )}
+                {!title && (
+                  <span className="px-3 py-1 bg-red-500/10 border border-red-500/30 rounded-full text-red-400 text-sm font-medium">
+                    Room Title
+                  </span>
+                )}
+              </div>
+            </motion.div>
+
+            {/* Action Buttons */}
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.5 }}
+              className="flex flex-col sm:flex-row gap-3"
+            >
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => router.push("/")}
+                className="flex-1 py-3 px-4 rounded-lg font-semibold bg-selected text-primary hover:bg-hover transition-colors duration-300 cursor-pointer flex items-center justify-center gap-2"
+              >
+                <Home className="w-4 h-4" />
+                Go Home
+              </motion.button>
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => window.location.reload()}
+                className="flex-1 py-3 px-4 rounded-lg font-semibold bg-background border border-selected text-secondary hover:text-primary hover:border-primary/50 transition-colors duration-300 cursor-pointer flex items-center justify-center gap-2"
+              >
+                <RefreshCw className="w-4 h-4" />
+                Try Again
+              </motion.button>
+            </motion.div>
+          </motion.div>
+
+          {/* Footer */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.5, delay: 0.6 }}
+            className="mt-4 text-center"
+          >
+            <p className="text-xs text-muted">
+              Please create a new room from the home page to get started.
+            </p>
+          </motion.div>
+        </motion.div>
       </div>
     );
   }
