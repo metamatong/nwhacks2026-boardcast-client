@@ -120,7 +120,7 @@ const HostView: React.FC = () => {
     };
   }, []);
 
-  // Stage 1: Request camera permission (idle → ready)
+  // Stage 1: Request camera and microphone permission (idle → ready)
   const requestPermission = useCallback(async () => {
     if (stage !== "idle") return;
 
@@ -131,16 +131,16 @@ const HostView: React.FC = () => {
           width: { ideal: 1280 },
           height: { ideal: 720 },
         },
-        audio: false,
+        audio: true, // Enable audio capture for streaming to participants
       };
 
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
       streamRef.current = stream;
       setStage("ready");
-      console.log("Camera permission granted, stream ready");
+      console.log("Camera and microphone permission granted, stream ready");
     } catch (error) {
-      console.error("Camera permission denied:", error);
-      alert("Camera access denied. Please allow camera access and try again.");
+      console.error("Camera/microphone permission denied:", error);
+      alert("Camera and microphone access denied. Please allow access and try again.");
     }
   }, [stage, facingMode]);
 
@@ -232,9 +232,10 @@ const HostView: React.FC = () => {
     const newMode = facingMode === "environment" ? "user" : "environment";
     setFacingMode(newMode);
 
-    // If we have a stream, restart with new facing mode
+    // If we have a stream, restart with new facing mode (keep audio)
     if (streamRef.current) {
-      streamRef.current.getTracks().forEach((t) => t.stop());
+      // Only stop video tracks, keep audio running
+      streamRef.current.getVideoTracks().forEach((t) => t.stop());
 
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
@@ -243,22 +244,45 @@ const HostView: React.FC = () => {
             width: { ideal: 1280 },
             height: { ideal: 720 },
           },
-          audio: false,
+          audio: true, // Keep audio enabled
         });
-        streamRef.current = stream;
+        
+        // Keep existing audio track if available, otherwise use new one
+        const existingAudioTracks = streamRef.current.getAudioTracks();
+        const newVideoTrack = stream.getVideoTracks()[0];
+        const newAudioTrack = stream.getAudioTracks()[0];
+        
+        // Create a new stream with the new video and audio
+        const combinedStream = new MediaStream();
+        if (newVideoTrack) combinedStream.addTrack(newVideoTrack);
+        if (newAudioTrack) combinedStream.addTrack(newAudioTrack);
+        
+        // Stop old audio tracks if we got new ones
+        if (newAudioTrack && existingAudioTracks.length > 0) {
+          existingAudioTracks.forEach((t) => t.stop());
+        }
+        
+        streamRef.current = combinedStream;
 
         if (videoRef.current && stage === "live") {
-          videoRef.current.srcObject = stream;
+          videoRef.current.srcObject = combinedStream;
           videoRef.current.play().catch(console.error);
         }
 
         // Update WebRTC tracks
         peerConnectionsRef.current.forEach((pc) => {
           const senders = pc.getSenders();
-          const videoTrack = stream.getVideoTracks()[0];
+          
+          // Update video track
           const videoSender = senders.find((s) => s.track?.kind === "video");
-          if (videoSender && videoTrack) {
-            videoSender.replaceTrack(videoTrack);
+          if (videoSender && newVideoTrack) {
+            videoSender.replaceTrack(newVideoTrack);
+          }
+          
+          // Update audio track if needed
+          const audioSender = senders.find((s) => s.track?.kind === "audio");
+          if (audioSender && newAudioTrack) {
+            audioSender.replaceTrack(newAudioTrack);
           }
         });
       } catch (error) {
