@@ -4,6 +4,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Share,
+  Share2,
   Circle,
   Layers,
   LogOut,
@@ -16,6 +17,10 @@ import {
   AlertCircle,
   Home,
   RefreshCw,
+  Star,
+  Camera,
+  Download,
+  Save,
 } from "lucide-react";
 import { useRoomWebSocket } from "@/frontend/hooks/useRoomWebSocket";
 
@@ -29,63 +34,19 @@ const ICE_SERVERS: RTCConfiguration = {
 
 interface Snippet {
   id: string;
-  title: string;
-  description: string;
+  dataUrl: string;
   timestamp: Date;
+  isManual: boolean; // true if manually captured by participant, false if from host
+  isStarred: boolean; // true if user starred this board snapshot
 }
+
+type SnippetFilter = "all" | "my-notes" | "board";
 
 interface Participant {
   id: string;
   name: string;
   color: string;
 }
-
-const MOCK_SNIPPETS: Snippet[] = [
-  {
-    id: "1",
-    title: "Diagram 1",
-    description: "Flow Chart",
-    timestamp: new Date(Date.now() - 300000),
-  },
-  {
-    id: "2",
-    title: "Notes 2",
-    description: "Meeting Notes",
-    timestamp: new Date(Date.now() - 600000),
-  },
-  {
-    id: "3",
-    title: "Wireframe 3",
-    description: "UI Design",
-    timestamp: new Date(Date.now() - 900000),
-  },
-  {
-    id: "4",
-    title: "Brainstorm 4",
-    description: "Ideas",
-    timestamp: new Date(Date.now() - 1200000),
-  },
-  {
-    id: "5",
-    title: "Plan 5",
-    description: "Project Plan",
-    timestamp: new Date(Date.now() - 1500000),
-  },
-  {
-    id: "6",
-    title: "Code 6",
-    description: "Code Review",
-    timestamp: new Date(Date.now() - 1800000),
-  },
-];
-
-const MOCK_PARTICIPANTS: Participant[] = [
-  { id: "1", name: "John Doe", color: "bg-blue-500" },
-  { id: "2", name: "Jane Smith", color: "bg-purple-500" },
-  { id: "3", name: "Bob Johnson", color: "bg-green-500" },
-  { id: "4", name: "Alice Brown", color: "bg-yellow-500" },
-  { id: "5", name: "Charlie Davis", color: "bg-red-500" },
-];
 
 const ParticipantAvatars: React.FC<{ participants: Participant[] }> = ({
   participants,
@@ -440,8 +401,13 @@ const SnippetCard: React.FC<{
   snippet: Snippet;
   onClick: () => void;
   onDelete: () => void;
-}> = ({ snippet, onClick, onDelete }) => {
+  onDownload: () => void;
+  onShare: () => void;
+  onToggleStar: () => void;
+}> = ({ snippet, onClick, onDelete, onDownload, onShare, onToggleStar }) => {
   const [isHovered, setIsHovered] = useState(false);
+  const isStarred = snippet.isManual || snippet.isStarred;
+  
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.9 }}
@@ -455,17 +421,47 @@ const SnippetCard: React.FC<{
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
+      {/* Star icon - clickable for board snapshots, static for manual */}
+      <motion.button
+        whileHover={{ scale: 1.2 }}
+        whileTap={{ scale: 0.9 }}
+        onClick={(e) => {
+          e.stopPropagation();
+          if (!snippet.isManual) {
+            onToggleStar();
+          }
+        }}
+        className={`absolute top-4 left-4 z-10 p-1 rounded-full transition-all cursor-pointer outline-none focus:outline-none ${
+          snippet.isManual ? "cursor-default" : "hover:bg-yellow-500/20"
+        }`}
+        aria-label={isStarred ? "Remove from My Notes" : "Add to My Notes"}
+      >
+        <Star
+          className={`w-4 h-4 transition-colors ${
+            isStarred
+              ? "text-yellow-400 fill-yellow-400"
+              : "text-muted hover:text-yellow-400"
+          }`}
+        />
+      </motion.button>
       <button
         onClick={onClick}
         className="w-full text-left cursor-pointer outline-none focus:outline-none focus:ring-0 focus-visible:outline-none"
       >
-        <div className="aspect-video bg-page border border-selected rounded-lg flex items-center justify-center mb-2 overflow-hidden transition-colors">
-          <div className="text-muted text-sm text-center px-2">
-            {snippet.title}
-          </div>
+        <div className="aspect-video bg-page border border-selected rounded-lg flex items-center justify-center mb-2 overflow-hidden transition-colors relative">
+          <img
+            src={snippet.dataUrl}
+            alt={`Snapshot at ${snippet.timestamp.toLocaleTimeString()}`}
+            className="w-full h-full object-cover"
+          />
         </div>
-        <div className="text-primary text-sm font-semibold transition-colors">
-          {snippet.description}
+        <div className="flex items-center gap-2">
+          <div className="text-primary text-sm font-semibold transition-colors flex-1">
+            {snippet.isManual ? "My Note" : isStarred ? "Starred Snapshot" : "Board Snapshot"}
+          </div>
+          {isStarred && (
+            <Star className="w-3 h-3 text-yellow-400 fill-yellow-400" />
+          )}
         </div>
         <div className="text-muted text-xs mt-1">
           {snippet.timestamp.toLocaleTimeString([], {
@@ -474,6 +470,38 @@ const SnippetCard: React.FC<{
           })}
         </div>
       </button>
+      
+      {/* Action buttons - always visible at bottom */}
+      <div className="flex gap-2 mt-3 pt-3 border-t border-selected">
+        <motion.button
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          onClick={(e) => {
+            e.stopPropagation();
+            onDownload();
+          }}
+          className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/30 hover:border-blue-500/50 rounded-md transition-all cursor-pointer outline-none focus:outline-none"
+          aria-label="Save/Download snippet"
+        >
+          <Save className="w-3.5 h-3.5 text-blue-400" />
+          <span className="text-xs font-medium text-blue-400">Save</span>
+        </motion.button>
+        <motion.button
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          onClick={(e) => {
+            e.stopPropagation();
+            onShare();
+          }}
+          className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 bg-green-500/10 hover:bg-green-500/20 border border-green-500/30 hover:border-green-500/50 rounded-md transition-all cursor-pointer outline-none focus:outline-none"
+          aria-label="Share snippet"
+        >
+          <Share2 className="w-3.5 h-3.5 text-green-400" />
+          <span className="text-xs font-medium text-green-400">Share</span>
+        </motion.button>
+      </div>
+      
+      {/* Delete button on hover */}
       <AnimatePresence>
         {isHovered && (
           <motion.button
@@ -487,7 +515,7 @@ const SnippetCard: React.FC<{
               e.stopPropagation();
               onDelete();
             }}
-            className="absolute top-2 right-2 p-1.5 hover:bg-red-500/20 border border-transparent hover:border-red-500 rounded-md transition-all cursor-pointer outline-none focus:outline-none focus:ring-0 focus-visible:outline-none"
+            className="absolute top-2 right-2 p-1.5 bg-background/80 hover:bg-red-500/20 border border-transparent hover:border-red-500 rounded-md transition-all cursor-pointer outline-none focus:outline-none focus:ring-0 focus-visible:outline-none"
             aria-label="Delete snippet"
           >
             <Trash2 className="w-3 h-3 text-muted group-hover:text-red-500" />
@@ -502,127 +530,202 @@ const Sidebar: React.FC<{
   isOpen: boolean;
   onClose: () => void;
   snippets: Snippet[];
+  filter: SnippetFilter;
+  onFilterChange: (filter: SnippetFilter) => void;
   onSnippetClick: (snippet: Snippet) => void;
   onDeleteSnippet: (id: string) => void;
+  onDownloadSnippet: (snippet: Snippet) => void;
+  onShareSnippet: (snippet: Snippet) => void;
+  onToggleStarSnippet: (id: string) => void;
   onCreateSnippet: () => void;
 }> = ({
   isOpen,
   onClose,
   snippets,
+  filter,
+  onFilterChange,
   onSnippetClick,
   onDeleteSnippet,
+  onDownloadSnippet,
+  onShareSnippet,
+  onToggleStarSnippet,
   onCreateSnippet,
-}) => (
-  <>
-    <AnimatePresence>
-      {isOpen && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.3 }}
-          className="fixed inset-0 bg-background/80 backdrop-blur-sm z-40 lg:hidden"
-          onClick={onClose}
-        />
-      )}
-    </AnimatePresence>
-    <motion.aside
-      initial={{ x: "100%" }}
-      animate={{ x: isOpen ? 0 : "100%" }}
-      transition={{ duration: 0.3, ease: "easeOut" }}
-      className="fixed right-0 top-0 h-full w-80 lg:w-96 bg-page/95 backdrop-blur-md border-l border-selected shadow-2xl z-50"
-    >
-      <div className="flex flex-col h-full">
-        <div className="flex items-center justify-between p-6 border-b border-selected shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-background rounded-lg border border-selected">
-              <Layers className="w-5 h-5 text-primary" />
+}) => {
+  // Filter and sort snippets - most recent first
+  const filteredSnippets = snippets
+    .filter((snippet) => {
+      if (filter === "all") return true;
+      if (filter === "my-notes") return snippet.isManual || snippet.isStarred;
+      if (filter === "board") return !snippet.isManual && !snippet.isStarred;
+      return true;
+    })
+    .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+
+  const myNotesCount = snippets.filter(s => s.isManual || s.isStarred).length;
+  const boardCount = snippets.filter(s => !s.isManual && !s.isStarred).length;
+
+  return (
+    <>
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
+            className="fixed inset-0 bg-background/80 backdrop-blur-sm z-40 lg:hidden"
+            onClick={onClose}
+          />
+        )}
+      </AnimatePresence>
+      <motion.aside
+        initial={{ x: "100%" }}
+        animate={{ x: isOpen ? 0 : "100%" }}
+        transition={{ duration: 0.3, ease: "easeOut" }}
+        className="fixed right-0 top-0 h-full w-80 lg:w-96 bg-page/95 backdrop-blur-md border-l border-selected shadow-2xl z-50"
+      >
+        <div className="flex flex-col h-full">
+          <div className="flex items-center justify-between p-6 border-b border-selected shrink-0">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-background rounded-lg border border-selected">
+                <Layers className="w-5 h-5 text-primary" />
+              </div>
+              <div>
+                <h2 className="text-lg font-bold text-primary">Snippets</h2>
+                <p className="text-xs text-muted">{snippets.length} saved</p>
+              </div>
             </div>
-            <div>
-              <h2 className="text-lg font-bold text-primary">Snippets</h2>
-              <p className="text-xs text-muted">{snippets.length} saved</p>
+            <motion.button
+              whileHover={{ scale: 1.1, rotate: 90 }}
+              whileTap={{ scale: 0.9 }}
+              onClick={onClose}
+              className="p-2 hover:bg-hover rounded-lg transition-colors cursor-pointer outline-none focus:outline-none focus:ring-0 focus-visible:outline-none"
+              aria-label="Close sidebar"
+            >
+              <X className="w-5 h-5 text-secondary" />
+            </motion.button>
+          </div>
+          
+          {/* Filter Tabs */}
+          <div className="p-4 border-b border-selected shrink-0">
+            <div className="flex gap-1 p-1 bg-background rounded-lg">
+              <button
+                onClick={() => onFilterChange("all")}
+                className={`flex-1 px-3 py-1.5 text-xs font-semibold rounded-md transition-all cursor-pointer ${
+                  filter === "all"
+                    ? "bg-selected text-primary"
+                    : "text-muted hover:text-secondary"
+                }`}
+              >
+                All ({snippets.length})
+              </button>
+              <button
+                onClick={() => onFilterChange("my-notes")}
+                className={`flex-1 px-3 py-1.5 text-xs font-semibold rounded-md transition-all cursor-pointer flex items-center justify-center gap-1 ${
+                  filter === "my-notes"
+                    ? "bg-yellow-500/20 text-yellow-400 border border-yellow-500/30"
+                    : "text-muted hover:text-secondary"
+                }`}
+              >
+                <Star className="w-3 h-3" />
+                My Notes ({myNotesCount})
+              </button>
+              <button
+                onClick={() => onFilterChange("board")}
+                className={`flex-1 px-3 py-1.5 text-xs font-semibold rounded-md transition-all cursor-pointer ${
+                  filter === "board"
+                    ? "bg-selected text-primary"
+                    : "text-muted hover:text-secondary"
+                }`}
+              >
+                Board ({boardCount})
+              </button>
             </div>
           </div>
-          <motion.button
-            whileHover={{ scale: 1.1, rotate: 90 }}
-            whileTap={{ scale: 0.9 }}
-            onClick={onClose}
-            className="p-2 hover:bg-hover rounded-lg transition-colors cursor-pointer outline-none focus:outline-none focus:ring-0 focus-visible:outline-none"
-            aria-label="Close sidebar"
-          >
-            <X className="w-5 h-5 text-secondary" />
-          </motion.button>
-        </div>
-        <div className="p-4 border-b border-selected space-y-2 shrink-0">
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={onCreateSnippet}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-selected text-primary rounded-lg font-semibold hover:bg-hover transition-colors duration-300 cursor-pointer outline-none focus:outline-none focus:ring-0 focus-visible:outline-none"
-          >
-            <Plus className="w-4 h-4" />
-            <span className="text-sm">New Snippet</span>
-          </motion.button>
-        </div>
-        <div className="flex-1 overflow-y-auto p-4">
-          {snippets.length > 0 ? (
-            <div className="grid grid-cols-1 gap-3">
-              <AnimatePresence mode="popLayout">
-                {snippets.map((snippet, index) => (
-                  <motion.div
-                    key={snippet.id}
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: 20 }}
-                    transition={{ duration: 0.3, delay: index * 0.05 }}
-                  >
-                    <SnippetCard
-                      snippet={snippet}
-                      onClick={() => onSnippetClick(snippet)}
-                      onDelete={() => onDeleteSnippet(snippet.id)}
-                    />
-                  </motion.div>
-                ))}
-              </AnimatePresence>
-            </div>
-          ) : (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.4 }}
-              className="flex flex-col items-center justify-center h-full text-center p-8"
+          
+          <div className="p-4 border-b border-selected space-y-2 shrink-0">
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={onCreateSnippet}
+              className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-yellow-500/20 border border-yellow-500/50 text-primary rounded-lg font-semibold hover:bg-yellow-500/30 transition-colors duration-300 cursor-pointer outline-none focus:outline-none focus:ring-0 focus-visible:outline-none"
             >
+              <div className="relative">
+                <Camera className="w-4 h-4" />
+                <Star className="w-2 h-2 text-yellow-400 fill-yellow-400 absolute -top-1 -right-1" />
+              </div>
+              <span className="text-sm">Save My Note</span>
+            </motion.button>
+            <p className="text-xs text-muted text-center">
+              Take a snapshot or click ⭐ on board snapshots to save
+            </p>
+          </div>
+          <div className="flex-1 overflow-y-auto p-4">
+            {filteredSnippets.length > 0 ? (
+              <div className="grid grid-cols-1 gap-3">
+                <AnimatePresence mode="popLayout">
+                  {filteredSnippets.map((snippet, index) => (
+                    <motion.div
+                      key={snippet.id}
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: 20 }}
+                      transition={{ duration: 0.3, delay: Math.min(index * 0.05, 0.3) }}
+                    >
+                      <SnippetCard
+                        snippet={snippet}
+                        onClick={() => onSnippetClick(snippet)}
+                        onDelete={() => onDeleteSnippet(snippet.id)}
+                        onDownload={() => onDownloadSnippet(snippet)}
+                        onShare={() => onShareSnippet(snippet)}
+                        onToggleStar={() => onToggleStarSnippet(snippet.id)}
+                      />
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
+              </div>
+            ) : (
               <motion.div
-                initial={{ scale: 0.8 }}
-                animate={{ scale: 1 }}
-                transition={{ duration: 0.5, delay: 0.2 }}
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.4 }}
+                className="flex flex-col items-center justify-center h-full text-center p-8"
               >
-                <Layers className="w-16 h-16 text-muted mb-4" />
+                <motion.div
+                  initial={{ scale: 0.8 }}
+                  animate={{ scale: 1 }}
+                  transition={{ duration: 0.5, delay: 0.2 }}
+                >
+                  <Layers className="w-16 h-16 text-muted mb-4" />
+                </motion.div>
+                <motion.p
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.4, delay: 0.3 }}
+                  className="text-secondary font-semibold mb-2"
+                >
+                  {filter === "all" ? "No snippets yet" : filter === "my-notes" ? "No starred notes" : "No board snapshots"}
+                </motion.p>
+                <motion.p
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.4, delay: 0.4 }}
+                  className="text-muted text-sm"
+                >
+                  {filter === "all"
+                    ? "Capture moments from your whiteboard session to save and review later"
+                    : filter === "my-notes"
+                    ? "Click the ⭐ on board snapshots or take a manual snapshot"
+                    : "Board snapshots will appear here automatically"}
+                </motion.p>
               </motion.div>
-              <motion.p
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.4, delay: 0.3 }}
-                className="text-secondary font-semibold mb-2"
-              >
-                No snippets yet
-              </motion.p>
-              <motion.p
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.4, delay: 0.4 }}
-                className="text-muted text-sm"
-              >
-                Capture moments from your whiteboard session to save and review
-                later
-              </motion.p>
-            </motion.div>
-          )}
+            )}
+          </div>
         </div>
-      </div>
-    </motion.aside>
-  </>
-);
+      </motion.aside>
+    </>
+  );
+};
 
 const SidebarToggle: React.FC<{ onClick: () => void; isOpen: boolean }> = ({
   onClick,
@@ -653,7 +756,8 @@ const Room: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
-  const [snippets, setSnippets] = useState(MOCK_SNIPPETS);
+  const [snippets, setSnippets] = useState<Snippet[]>([]);
+  const [snippetFilter, setSnippetFilter] = useState<SnippetFilter>("all");
   const [showParticipants, setShowParticipants] = useState(false);
   const [hasStream, setHasStream] = useState(false);
   const [webrtcStatus, setWebrtcStatus] = useState<string>("idle");
@@ -666,6 +770,29 @@ const Room: React.FC = () => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
   const pendingCandidatesRef = useRef<RTCIceCandidateInit[]>([]);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+
+  // Ref to hold sendWebRTCSignal function for use in callback
+  const sendWebRTCSignalRef = useRef<((signal: any) => void) | null>(null);
+
+  // Handle incoming screenshot from host
+  const handleScreenshot = useCallback(
+    (screenshot: { id: string; dataUrl: string; timestamp: string }) => {
+      // Add unique prefix to avoid duplicate keys when same screenshot is received multiple times
+      const uniqueId = `received-${screenshot.id}-${Date.now()}`;
+      const newSnippet: Snippet = {
+        id: uniqueId,
+        dataUrl: screenshot.dataUrl,
+        timestamp: new Date(screenshot.timestamp),
+        isManual: false,
+        isStarred: false,
+      };
+      // Add to beginning for most recent first
+      setSnippets((prev) => [newSnippet, ...prev]);
+      console.log("Received screenshot from host:", uniqueId);
+    },
+    [],
+  );
 
   // Handle incoming WebRTC signals
   const handleWebRTCSignal = useCallback(async (signal: any) => {
@@ -691,10 +818,10 @@ const Room: React.FC = () => {
           }
         };
 
-        // Handle ICE candidates
+        // Handle ICE candidates - use ref to avoid circular dependency
         pc.onicecandidate = (event) => {
-          if (event.candidate) {
-            sendWebRTCSignal({
+          if (event.candidate && sendWebRTCSignalRef.current) {
+            sendWebRTCSignalRef.current({
               type: "webrtc-ice-candidate",
               candidate: event.candidate.toJSON(),
               to: from,
@@ -723,15 +850,17 @@ const Room: React.FC = () => {
         }
         pendingCandidatesRef.current = [];
 
-        // Create and send answer
+        // Create and send answer - use ref to avoid circular dependency
         const answer = await pc.createAnswer();
         await pc.setLocalDescription(answer);
 
-        sendWebRTCSignal({
-          type: "webrtc-answer",
-          sdp: pc.localDescription!,
-          to: from,
-        });
+        if (sendWebRTCSignalRef.current) {
+          sendWebRTCSignalRef.current({
+            type: "webrtc-answer",
+            sdp: pc.localDescription!,
+            to: from,
+          });
+        }
 
         console.log("Sent WebRTC answer to host");
       } catch (error) {
@@ -765,7 +894,13 @@ const Room: React.FC = () => {
     participantName: title,
     isHost: false,
     onWebRTCSignal: handleWebRTCSignal,
+    onScreenshot: handleScreenshot,
   });
+
+  // Update the ref when sendWebRTCSignal is available
+  useEffect(() => {
+    sendWebRTCSignalRef.current = sendWebRTCSignal;
+  }, [sendWebRTCSignal]);
 
   // Cleanup peer connection on unmount
   useEffect(() => {
@@ -809,16 +944,130 @@ const Room: React.FC = () => {
     console.log("Deleted snippet:", id);
   }, []);
 
+  // Toggle star on a board snapshot
+  const handleToggleStarSnippet = useCallback((id: string) => {
+    setSnippets((prev) =>
+      prev.map((s) =>
+        s.id === id ? { ...s, isStarred: !s.isStarred } : s
+      )
+    );
+    console.log("Toggled star on snippet:", id);
+  }, []);
+
+  // Take a manual snapshot from the video stream
   const handleCreateSnippet = useCallback(() => {
-    const newSnippet: Snippet = {
-      id: Date.now().toString(),
-      title: `Snippet ${snippets.length + 1}`,
-      description: "New Capture",
-      timestamp: new Date(),
-    };
-    setSnippets((prev) => [newSnippet, ...prev]);
-    console.log("Created snippet:", newSnippet);
-  }, [snippets.length]);
+    const video = videoRef.current;
+
+    if (!video) {
+      console.log("No video element available for snapshot");
+      return;
+    }
+
+    // Check if video has valid dimensions
+    if (video.videoWidth === 0 || video.videoHeight === 0) {
+      console.log("Video dimensions not ready, trying with display dimensions");
+      // Try using display dimensions as fallback
+      if (video.clientWidth === 0 || video.clientHeight === 0) {
+        console.log("No video dimensions available for snapshot");
+        return;
+      }
+    }
+
+    // Create canvas if it doesn't exist
+    if (!canvasRef.current) {
+      canvasRef.current = document.createElement("canvas");
+    }
+
+    const canvas = canvasRef.current;
+    // Use video dimensions if available, otherwise use display dimensions
+    const width = video.videoWidth || video.clientWidth || 1280;
+    const height = video.videoHeight || video.clientHeight || 720;
+
+    canvas.width = width;
+    canvas.height = height;
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) {
+      console.log("Could not get canvas context");
+      return;
+    }
+
+    try {
+      // Draw the current video frame to canvas
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+      // Convert to data URL
+      const dataUrl = canvas.toDataURL("image/jpeg", 0.8);
+
+      // Check if we got a valid image (not just a blank canvas)
+      if (dataUrl === "data:," || dataUrl.length < 1000) {
+        console.log("Captured image appears to be blank");
+        return;
+      }
+
+      const newSnippet: Snippet = {
+        id: `manual-${Date.now()}`,
+        dataUrl,
+        timestamp: new Date(),
+        isManual: true, // Mark as manually captured
+        isStarred: true, // Manual snapshots are always starred
+      };
+
+      setSnippets((prev) => [newSnippet, ...prev]);
+      console.log("Manual snapshot captured:", newSnippet.id);
+    } catch (error) {
+      console.error("Error capturing snapshot:", error);
+    }
+  }, []);
+
+  // Download a snippet
+  const handleDownloadSnippet = useCallback((snippet: Snippet) => {
+    const link = document.createElement("a");
+    link.href = snippet.dataUrl;
+    const prefix = snippet.isManual ? "my-note" : "board-snapshot";
+    link.download = `${prefix}-${snippet.timestamp.toISOString().replace(/[:.]/g, "-")}.jpg`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }, []);
+
+  // Share a snippet - Note: Web Share API requires HTTPS and user gesture
+  // For data URLs, we can only copy to clipboard or download
+  // A proper share link would require uploading to a server first
+  const handleShareSnippet = useCallback(async (snippet: Snippet) => {
+    // Try to use Web Share API if available (mobile-friendly)
+    if (navigator.share && navigator.canShare) {
+      try {
+        // Convert data URL to blob for sharing
+        const response = await fetch(snippet.dataUrl);
+        const blob = await response.blob();
+        const file = new File([blob], `snapshot-${snippet.timestamp.getTime()}.jpg`, { type: 'image/jpeg' });
+        
+        if (navigator.canShare({ files: [file] })) {
+          await navigator.share({
+            title: snippet.isManual ? 'My Note' : 'Board Snapshot',
+            text: `Snapshot from ${snippet.timestamp.toLocaleString()}`,
+            files: [file],
+          });
+          console.log("Shared successfully via Web Share API");
+          return;
+        }
+      } catch (error) {
+        console.log("Web Share API failed, falling back to clipboard:", error);
+      }
+    }
+    
+    // Fallback: Copy image data URL to clipboard (limited support)
+    // Most browsers don't support copying images directly, so we'll copy a message
+    try {
+      const shareText = `Board snapshot from ${snippet.timestamp.toLocaleString()}. Use the Save button to download the image.`;
+      await navigator.clipboard.writeText(shareText);
+      alert("Share link is not available for local screenshots. The image has been prepared for download - use the Save button instead.");
+    } catch (error) {
+      console.error("Failed to copy to clipboard:", error);
+      alert("Sharing is not available. Please use the Save button to download the image.");
+    }
+  }, []);
 
   const handleShareScreen = useCallback(() => {
     console.log("Share screen clicked");
@@ -964,7 +1213,8 @@ const Room: React.FC = () => {
             className="mt-4 text-center"
           >
             <p className="text-xs text-muted">
-              Please check the room code and try again, or ask the host for a new link.
+              Please check the room code and try again, or ask the host for a
+              new link.
             </p>
           </motion.div>
         </motion.div>
@@ -997,6 +1247,7 @@ const Room: React.FC = () => {
         hasStream={hasStream}
         webrtcStatus={webrtcStatus}
       />
+      {/* Bottom control panel - commented out as requested
       <ControlPanel
         onShareScreen={handleShareScreen}
         onStartRecording={handleStartRecording}
@@ -1004,12 +1255,18 @@ const Room: React.FC = () => {
         onEndSession={handleEndSession}
         isRecording={isRecording}
       />
+      */}
       <Sidebar
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
         snippets={snippets}
+        filter={snippetFilter}
+        onFilterChange={setSnippetFilter}
         onSnippetClick={handleSnippetClick}
         onDeleteSnippet={handleDeleteSnippet}
+        onDownloadSnippet={handleDownloadSnippet}
+        onShareSnippet={handleShareSnippet}
+        onToggleStarSnippet={handleToggleStarSnippet}
         onCreateSnippet={handleCreateSnippet}
       />
       <SidebarToggle

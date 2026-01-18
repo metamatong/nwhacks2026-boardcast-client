@@ -89,6 +89,7 @@ const HostView: React.FC = () => {
     participants: wsParticipants,
     isConnected,
     sendWebRTCSignal,
+    sendMessage,
     getClientId,
   } = useRoomWebSocket({
     joinCode: roomCode,
@@ -164,8 +165,8 @@ const HostView: React.FC = () => {
     // Draw the current video frame to canvas
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
     
-    // Convert to data URL
-    const dataUrl = canvas.toDataURL("image/png");
+    // Convert to data URL (use JPEG for smaller size when broadcasting)
+    const dataUrl = canvas.toDataURL("image/jpeg", 0.7);
     
     const screenshot: Screenshot = {
       id: `screenshot-${Date.now()}`,
@@ -174,8 +175,17 @@ const HostView: React.FC = () => {
     };
     
     setScreenshots((prev) => [...prev, screenshot]);
-    console.log("Screenshot captured at:", screenshot.timestamp.toISOString());
-  }, []);
+    
+    // Broadcast screenshot to all participants via WebSocket
+    sendMessage({
+      type: "screenshot",
+      id: screenshot.id,
+      dataUrl: screenshot.dataUrl,
+      timestamp: screenshot.timestamp.toISOString(),
+    });
+    
+    console.log("Screenshot captured and broadcast at:", screenshot.timestamp.toISOString());
+  }, [sendMessage]);
 
   // Start automatic screenshot interval
   const startScreenshotInterval = useCallback(() => {
@@ -183,15 +193,15 @@ const HostView: React.FC = () => {
       clearInterval(screenshotIntervalRef.current);
     }
     
-    // Take screenshots every 5 seconds
+    // Take screenshots every 10 seconds (reduced frequency for WebSocket bandwidth)
     screenshotIntervalRef.current = setInterval(() => {
       takeScreenshot();
-    }, 5000);
+    }, 10000);
     
-    // Take an initial screenshot immediately
-    setTimeout(() => takeScreenshot(), 1000);
+    // Take an initial screenshot after 2 seconds
+    setTimeout(() => takeScreenshot(), 2000);
     
-    console.log("Screenshot interval started (every 5 seconds)");
+    console.log("Screenshot interval started (every 10 seconds)");
   }, [takeScreenshot]);
 
   // Stop automatic screenshot interval

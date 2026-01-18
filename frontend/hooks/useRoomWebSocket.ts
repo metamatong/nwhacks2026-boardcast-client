@@ -15,14 +15,23 @@ interface WebRTCSignal {
   to?: string;
 }
 
+interface ScreenshotMessage {
+  type: 'screenshot';
+  id: string;
+  dataUrl: string;
+  timestamp: string;
+  from: string;
+}
+
 interface UseRoomWebSocketProps {
   joinCode: string | null;
   participantName: string;
   isHost?: boolean;
   onWebRTCSignal?: (signal: WebRTCSignal) => void;
+  onScreenshot?: (screenshot: ScreenshotMessage) => void;
 }
 
-export function useRoomWebSocket({ joinCode, participantName, isHost = false, onWebRTCSignal }: UseRoomWebSocketProps) {
+export function useRoomWebSocket({ joinCode, participantName, isHost = false, onWebRTCSignal, onScreenshot }: UseRoomWebSocketProps) {
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [isConnected, setIsConnected] = useState(false);
   const [roomId, setRoomId] = useState<string | null>(null);
@@ -30,11 +39,16 @@ export function useRoomWebSocket({ joinCode, participantName, isHost = false, on
   const wsRef = useRef<WebSocket | null>(null);
   const clientIdRef = useRef<string>(Math.random().toString(36).substring(7));
   const onWebRTCSignalRef = useRef(onWebRTCSignal);
+  const onScreenshotRef = useRef(onScreenshot);
 
-  // Keep callback ref updated
+  // Keep callback refs updated
   useEffect(() => {
     onWebRTCSignalRef.current = onWebRTCSignal;
   }, [onWebRTCSignal]);
+
+  useEffect(() => {
+    onScreenshotRef.current = onScreenshot;
+  }, [onScreenshot]);
 
   // Get client ID
   const getClientId = useCallback(() => clientIdRef.current, []);
@@ -112,6 +126,13 @@ export function useRoomWebSocket({ joinCode, participantName, isHost = false, on
               // Forward WebRTC signaling to callback
               if (onWebRTCSignalRef.current && msg.from !== clientIdRef.current) {
                 onWebRTCSignalRef.current(msg as WebRTCSignal);
+              }
+              break;
+
+            case 'screenshot':
+              // Forward screenshot to callback (only for non-hosts receiving from host)
+              if (onScreenshotRef.current && msg.from !== clientIdRef.current) {
+                onScreenshotRef.current(msg as ScreenshotMessage);
               }
               break;
 
