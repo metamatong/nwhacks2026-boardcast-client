@@ -267,31 +267,46 @@ const WhiteboardArea: React.FC<{
   isConnected: boolean;
   hasStream: boolean;
   webrtcStatus: string;
-}> = ({ videoRef, isConnected, hasStream, webrtcStatus }) => (
-  <div
-    className="flex-1 bg-background flex items-center justify-center p-4 sm:p-6 lg:p-8 min-h-0 relative"
-    style={{
-      backgroundImage: `radial-gradient(circle, rgba(150, 150, 150, 0.15) 1.5px, transparent 1.5px)`,
-      backgroundSize: "40px 40px",
-    }}
-  >
-    <motion.div
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={{ duration: 0.6, delay: 0.3 }}
-      className="w-full h-full max-w-6xl bg-page/50 backdrop-blur-sm border border-selected rounded-xl flex items-center justify-center shadow-xl overflow-hidden relative"
+}> = ({ videoRef, isConnected, hasStream, webrtcStatus }) => {
+  // When stream is active, show fullscreen video
+  if (hasStream) {
+    return (
+      <div className="flex-1 bg-black flex items-center justify-center min-h-0 relative">
+        <video
+          ref={videoRef}
+          autoPlay
+          playsInline
+          muted={false}
+          className="w-full h-full object-cover"
+        />
+      </div>
+    );
+  }
+
+  // Show waiting state when no stream
+  return (
+    <div
+      className="flex-1 bg-background flex items-center justify-center p-4 sm:p-6 lg:p-8 min-h-0 relative"
+      style={{
+        backgroundImage: `radial-gradient(circle, rgba(150, 150, 150, 0.15) 1.5px, transparent 1.5px)`,
+        backgroundSize: "40px 40px",
+      }}
     >
-      {/* Video element for WebRTC stream */}
-      <video
-        ref={videoRef}
-        autoPlay
-        playsInline
-        muted={false}
-        className={`w-full h-full object-contain ${hasStream ? 'block' : 'hidden'}`}
-      />
-      
-      {!hasStream && (
-        // Show waiting state
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.6, delay: 0.3 }}
+        className="w-full h-full max-w-6xl bg-page/50 backdrop-blur-sm border border-selected rounded-xl flex items-center justify-center shadow-xl overflow-hidden relative"
+      >
+        {/* Hidden video element to maintain ref */}
+        <video
+          ref={videoRef}
+          autoPlay
+          playsInline
+          muted={false}
+          className="hidden"
+        />
+        
         <div className="text-center space-y-6 p-8">
           <motion.div
             initial={{ scale: 0.8, opacity: 0 }}
@@ -336,10 +351,10 @@ const WhiteboardArea: React.FC<{
             </span>
           </motion.div>
         </div>
-      )}
-    </motion.div>
-  </div>
-);
+      </motion.div>
+    </div>
+  );
+};
 
 const Controla: React.FC<{
   icon: React.ReactNode;
