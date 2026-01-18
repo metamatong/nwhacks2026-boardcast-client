@@ -13,6 +13,9 @@ import {
   Image,
 } from "lucide-react";
 import { useRoomWebSocket } from "@/frontend/hooks/useRoomWebSocket";
+import HighlightToast, {
+  HighlightPayload,
+} from "@/frontend/components/HighlightToast";
 
 interface Participant {
   id: string;
@@ -106,6 +109,8 @@ const HostView: React.FC = () => {
   const [webrtcStatus, setWebrtcStatus] = useState<string>("idle");
   const [audioRecording, setAudioRecording] = useState(false);
   const [audioUploadError, setAudioUploadError] = useState<string | null>(null);
+  const [highlight, setHighlight] = useState<HighlightPayload | null>(null);
+  const [showHighlight, setShowHighlight] = useState(false);
   const [screenshots, setScreenshots] = useState<Screenshot[]>([]);
 
   // Get room details from URL parameters
@@ -120,6 +125,7 @@ const HostView: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const screenshotIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const lastAudioChunkAtRef = useRef<number>(0);
+  const highlightTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // WebRTC peer connections (one per participant)
   const peerConnectionsRef = useRef<Map<string, RTCPeerConnection>>(new Map());
@@ -152,6 +158,35 @@ const HostView: React.FC = () => {
     }
   }, []);
 
+  const handleHighlight = useCallback((payload: HighlightPayload) => {
+    const highlightPayload =
+      payload.highlight && typeof payload.highlight === "object"
+        ? (payload.highlight as HighlightPayload)
+        : payload;
+
+    setHighlight(highlightPayload);
+    setShowHighlight(true);
+  }, []);
+
+  useEffect(() => {
+    if (!showHighlight) return;
+
+    if (highlightTimeoutRef.current) {
+      clearTimeout(highlightTimeoutRef.current);
+    }
+
+    highlightTimeoutRef.current = setTimeout(() => {
+      setShowHighlight(false);
+    }, 8000);
+
+    return () => {
+      if (highlightTimeoutRef.current) {
+        clearTimeout(highlightTimeoutRef.current);
+        highlightTimeoutRef.current = null;
+      }
+    };
+  }, [showHighlight, highlight]);
+
   // Connect to WebSocket
   const {
     participants: wsParticipants,
@@ -165,6 +200,7 @@ const HostView: React.FC = () => {
     participantName: "Host",
     isHost: true,
     onWebRTCSignal: handleWebRTCSignal,
+    onHighlight: handleHighlight,
   });
 
   // Map WebSocket participants to UI format
@@ -1040,6 +1076,15 @@ const HostView: React.FC = () => {
               )}
             </motion.div>
           </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showHighlight && highlight && (
+          <HighlightToast
+            highlight={highlight}
+            onClose={() => setShowHighlight(false)}
+          />
         )}
       </AnimatePresence>
     </div>
