@@ -26,9 +26,31 @@ export default function Landing() {
 
   const [error, setError] = useState<string | null>(null);
 
+  // Clean room code (remove spaces and non-alphanumeric characters)
+  const cleanRoomCode = roomCode.replace(/[^A-Z0-9]/gi, "").toUpperCase();
+  
+  // Format room code with space after first 3 characters (ABC 123)
+  const formatRoomCode = (code: string): string => {
+    const clean = code.replace(/[^A-Z0-9]/gi, "").toUpperCase().slice(0, 6);
+    if (clean.length <= 3) return clean;
+    return `${clean.slice(0, 3)} ${clean.slice(3)}`;
+  };
+  
+  // Displayed room code with space
+  const displayRoomCode = formatRoomCode(roomCode);
+  
+  // Validate room code format (exactly 6 alphanumeric characters)
+  const isValidRoomCode = cleanRoomCode.length === 6;
+
   const handleSubmit = async () => {
     if (mode === "join" && (!roomCode.trim() || !roomTitle.trim())) return;
     if (mode === "create" && !roomTitle.trim()) return;
+
+    // Validate room code format for join mode
+    if (mode === "join" && !isValidRoomCode) {
+      setError("Room code must be exactly 6 characters.");
+      return;
+    }
 
     setIsLoading(true);
     setError(null);
@@ -59,21 +81,39 @@ export default function Landing() {
           `/room_create?id=${encodeURIComponent(data.join_code)}&title=${encodeURIComponent(data.title)}`,
         );
       } else {
-        // Join existing room - redirect to /room with the room code
-        console.log(`Joining room ${roomCode} as ${roomTitle}`);
+        // Verify room exists before joining
+        const verifyRes = await fetch(
+          "https://boardcast-server.fly.dev/api/rooms/join/",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ join_code: cleanRoomCode }),
+          },
+        );
+
+        if (!verifyRes.ok) {
+          throw new Error("Room not found");
+        }
+
+        // Room exists, proceed to join
+        console.log(`Joining room ${cleanRoomCode} as ${roomTitle}`);
         router.push(
-          `/room?id=${encodeURIComponent(roomCode)}&title=${encodeURIComponent(roomTitle)}`,
+          `/room?id=${encodeURIComponent(cleanRoomCode)}&title=${encodeURIComponent(roomTitle)}`,
         );
       }
     } catch (err) {
-      setError("Something went wrong. Please try again.");
+      if (mode === "join") {
+        setError("Room not found. Please check the room code.");
+      } else {
+        setError("Something went wrong. Please try again.");
+      }
     } finally {
       setIsLoading(false);
     }
   };
 
   const isFormValid =
-    mode === "join" ? roomCode.trim() && roomTitle.trim() : roomTitle.trim();
+    mode === "join" ? cleanRoomCode.length > 0 && roomTitle.trim() : roomTitle.trim();
 
   const handleClearCanvas = () => {
     const canvas = document.querySelector("canvas") as HTMLCanvasElement;
@@ -257,7 +297,7 @@ export default function Landing() {
                 value={roomTitle}
                 onChange={(e) => setRoomTitle(e.target.value)}
                 onKeyPress={(e) => e.key === "Enter" && handleSubmit()}
-                className="w-full px-4 py-3 border border-selected rounded-lg bg-background text-primary placeholder-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition"
+                className="w-full px-4 py-3 border border-selected rounded-lg bg-background text-primary placeholder-muted focus:outline-none focus:ring-primary focus:border-transparent transition"
               />
             </div>
 
@@ -276,11 +316,27 @@ export default function Landing() {
                   <input
                     type="text"
                     placeholder="ABC 123"
-                    value={roomCode}
-                    onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
+                    value={displayRoomCode}
+                    maxLength={7}
+                    onChange={(e) => {
+                      // Remove spaces and non-alphanumeric, limit to 6 chars
+                      const cleaned = e.target.value.replace(/[^A-Z0-9]/gi, "").toUpperCase().slice(0, 6);
+                      setRoomCode(cleaned);
+                    }}
                     onKeyPress={(e) => e.key === "Enter" && handleSubmit()}
-                    className="w-full px-4 py-3 border border-selected rounded-lg bg-background text-primary placeholder-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition uppercase tracking-widest text-center font-mono text-lg"
+                    className={`w-full px-4 py-3 border rounded-lg bg-background text-primary placeholder-muted focus:outline-none focus:border-transparent transition uppercase tracking-widest text-center font-mono text-lg ${
+                      cleanRoomCode.length > 0 && !isValidRoomCode
+                        ? "border-red-500/50 focus:ring-red-500/50"
+                        : cleanRoomCode.length === 6
+                          ? "border-green-500/50 focus:ring-green-500/50"
+                          : "border-selected focus:ring-primary"
+                    }`}
                   />
+                  {roomCode.length > 0 && (
+                    <p className={`text-xs mt-1.5 ${isValidRoomCode ? "text-green-400" : "text-muted"}`}>
+                      {isValidRoomCode ? "✓ Valid format" : `${cleanRoomCode.length}/6 characters`}
+                    </p>
+                  )}
                 </motion.div>
               )}
             </AnimatePresence>
