@@ -15,6 +15,7 @@ import {
   Plus,
 } from "lucide-react";
 import { useRoomWebSocket } from "@/frontend/hooks/useRoomWebSocket";
+import { useWhiteboardProcessor } from "@/frontend/hooks/useWhiteboardProcessor";
 
 // ICE servers for WebRTC
 const ICE_SERVERS: RTCConfiguration = {
@@ -267,7 +268,10 @@ const WhiteboardArea: React.FC<{
   isConnected: boolean;
   hasStream: boolean;
   webrtcStatus: string;
-}> = ({ videoRef, isConnected, hasStream, webrtcStatus }) => (
+  whiteboardCanvas: string | null;
+  showProcessedView: boolean;
+  onToggleView: () => void;
+}> = ({ videoRef, isConnected, hasStream, webrtcStatus, whiteboardCanvas, showProcessedView, onToggleView }) => (
   <div
     className="flex-1 bg-background flex items-center justify-center p-4 sm:p-6 lg:p-8 min-h-0 relative"
     style={{
@@ -281,13 +285,39 @@ const WhiteboardArea: React.FC<{
       transition={{ duration: 0.6, delay: 0.3 }}
       className="w-full h-full max-w-6xl bg-page/50 backdrop-blur-sm border border-selected rounded-xl flex items-center justify-center shadow-xl overflow-hidden relative"
     >
+      {/* Toggle button for switching between raw and processed view */}
+      {hasStream && whiteboardCanvas && (
+        <motion.button
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          onClick={onToggleView}
+          className="absolute top-4 right-4 z-10 px-4 py-2 bg-background/90 backdrop-blur-sm border border-selected rounded-lg text-xs font-semibold text-primary hover:bg-hover transition-colors cursor-pointer"
+        >
+          {showProcessedView ? "Show Raw Stream" : "Show Clean Board"}
+        </motion.button>
+      )}
+
+      {/* Processed whiteboard view */}
+      {showProcessedView && whiteboardCanvas && (
+        <motion.img
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          src={whiteboardCanvas}
+          alt="Processed Whiteboard"
+          className="w-full h-full object-contain"
+        />
+      )}
+
       {/* Video element for WebRTC stream */}
       <video
         ref={videoRef}
         autoPlay
         playsInline
         muted={false}
-        className={`w-full h-full object-contain ${hasStream ? 'block' : 'hidden'}`}
+        className={`w-full h-full object-contain ${hasStream && !showProcessedView ? 'block' : 'hidden'}`}
       />
       
       {!hasStream && (
@@ -640,10 +670,24 @@ const Room: React.FC = () => {
   const [showParticipants, setShowParticipants] = useState(false);
   const [hasStream, setHasStream] = useState(false);
   const [webrtcStatus, setWebrtcStatus] = useState<string>('idle');
+  const [showProcessedView, setShowProcessedView] = useState(false);
 
   // Get room code from URL
   const roomCode = searchParams.get("id") || "ABC-123-XYZ";
   const title = searchParams.get("title") || "Untitled Board";
+
+  // Connect to whiteboard processor
+  const { whiteboardCanvas, isConnected: processorConnected, frameCount } = useWhiteboardProcessor({
+    roomId: roomCode,
+    enabled: true,
+  });
+
+  // Auto-switch to processed view when canvas becomes available
+  useEffect(() => {
+    if (whiteboardCanvas && !showProcessedView) {
+      setShowProcessedView(true);
+    }
+  }, [whiteboardCanvas]);
 
   // WebRTC refs
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -844,6 +888,9 @@ const Room: React.FC = () => {
         isConnected={isConnected}
         hasStream={hasStream}
         webrtcStatus={webrtcStatus}
+        whiteboardCanvas={whiteboardCanvas}
+        showProcessedView={showProcessedView}
+        onToggleView={() => setShowProcessedView(!showProcessedView)}
       />
       <ControlPanel
         onShareScreen={handleShareScreen}

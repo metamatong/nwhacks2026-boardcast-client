@@ -42,9 +42,13 @@ const HostView: React.FC = () => {
   // Refs
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
 
   // WebRTC peer connections (one per participant)
   const peerConnectionsRef = useRef<Map<string, RTCPeerConnection>>(new Map());
+  
+  // Frame capture interval
+  const frameCaptureIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Handle incoming WebRTC signals
   const handleWebRTCSignal = useCallback(async (signal: any) => {
@@ -132,6 +136,71 @@ const HostView: React.FC = () => {
       alert("Camera access denied. Please allow camera access and try again.");
     }
   }, [stage, facingMode]);
+
+  // Capture and send frame to backend for processing
+  const captureAndSendFrame = useCallback(async () => {
+    if (!videoRef.current || !canvasRef.current || stage !== "live") return;
+
+    try {
+      const video = videoRef.current;
+      const canvas = canvasRef.current;
+      const ctx = canvas.getContext('2d');
+      
+      if (!ctx) return;
+
+      // Set canvas size to match video
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+
+      // Draw current video frame to canvas
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+      // Convert to base64
+      const frameData = canvas.toDataURL('image/jpeg', 0.8);
+
+      // Send to backend
+      const response = await fetch('http://localhost:5000/api/process-frame', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          room_id: roomCode,
+          frame: frameData,
+        }),
+      });
+
+      const result = await response.json();
+      console.log('Frame processing result:', result.status);
+    } catch (error) {
+      console.error('Error capturing/sending frame:', error);
+    }
+  }, [stage, roomCode]);
+
+  // Start frame capture when going live
+  useEffect(() => {
+    if (stage === "live") {
+      // Capture frame every 3 seconds
+      frameCaptureIntervalRef.current = setInterval(() => {
+        captureAndSendFrame();
+      }, 3000);
+
+      console.log("📸 Frame capture started (every 3 seconds)");
+    } else {
+      // Clear interval when not live
+      if (frameCaptureIntervalRef.current) {
+        clearInterval(frameCaptureIntervalRef.current);
+        frameCaptureIntervalRef.current = null;
+        console.log("📸 Frame capture stopped");
+      }
+    }
+
+    return () => {
+      if (frameCaptureIntervalRef.current) {
+        clearInterval(frameCaptureIntervalRef.current);
+      }
+    };
+  }, [stage, captureAndSendFrame]);
 
   // Stage 2: Go live (ready → live)
   const goLive = useCallback(() => {
@@ -300,6 +369,9 @@ const HostView: React.FC = () => {
         playsInline
         muted
       />
+
+      {/* Hidden canvas for frame capture */}
+      <canvas ref={canvasRef} className="hidden" />
 
       {/* Top Bar */}
       <motion.div
