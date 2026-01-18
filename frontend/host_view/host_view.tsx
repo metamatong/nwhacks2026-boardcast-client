@@ -3,7 +3,7 @@
 import React, { useState, useCallback, useRef, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Camera, SwitchCamera, HelpCircle, Play } from "lucide-react";
+import { X, Camera, SwitchCamera, HelpCircle, Play, Mic } from "lucide-react";
 import { useRoomWebSocket } from "@/frontend/hooks/useRoomWebSocket";
 
 interface Participant {
@@ -35,6 +35,13 @@ const HostView: React.FC = () => {
   const [showHelp, setShowHelp] = useState(false);
   const [webrtcStatus, setWebrtcStatus] = useState<string>("idle");
 
+  // Audio recording state
+  const [audioChunks, setAudioChunks] = useState<Blob[]>([]);
+  const [isRecordingAudio, setIsRecordingAudio] = useState(false);
+  const audioStreamRef = useRef<MediaStream | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const roomIdRef = useRef<string | null>(null);
+
   // Get room details from URL parameters
   const roomCode = searchParams.get("id") || "ABC123";
   const roomName = searchParams.get("title") || "Untitled Board";
@@ -45,6 +52,108 @@ const HostView: React.FC = () => {
 
   // WebRTC peer connections (one per participant)
   const peerConnectionsRef = useRef<Map<string, RTCPeerConnection>>(new Map());
+
+  // Send audio chunk to server
+  const sendAudioToServer = useCallback(async (audioBlob: Blob) => {
+    if (!roomIdRef.current) {
+      console.log("No room ID available for audio upload");
+      return;
+    }
+
+    try {
+      const form = new FormData();
+      form.append("room_id", roomIdRef.current);
+      form.append("duration_ms", "5000");
+      form.append("file", audioBlob, `chunk_${Date.now()}.webm`);
+
+      console.log("Uploading audio chunk to server...", {
+        roomId: roomIdRef.current,
+        blobSize: audioBlob.size,
+        blobType: audioBlob.type,
+      });
+
+      const response = await fetch(
+        "https://boardcast-server.fly.dev/api/media/audio-chunks/",
+        {
+          method: "POST",
+          body: form,
+        },
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log("Audio chunk uploaded successfully:", data);
+      } else {
+        const errorText = await response.text();
+        console.error(
+          "Failed to upload audio chunk:",
+          response.status,
+          errorText,
+        );
+      }
+    } catch (error) {
+      console.error("Error uploading audio chunk:", error);
+    }
+  }, []);
+
+  // Start audio recording
+  const startAudioRecording = useCallback(async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      audioStreamRef.current = stream;
+
+      // Find supported mime type
+      const mimeTypes = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4"];
+      const mimeType = mimeTypes.find((t) => MediaRecorder.isTypeSupported(t));
+
+      const recorder = new MediaRecorder(
+        stream,
+        mimeType ? { mimeType } : undefined,
+      );
+      mediaRecorderRef.current = recorder;
+
+      recorder.ondataavailable = async (e) => {
+        if (!e.data.size) return;
+        console.log("Audio chunk available:", e.data.size, "bytes");
+        setAudioChunks((prev) => [...prev, e.data]);
+
+        // Send to server
+        await sendAudioToServer(e.data);
+      };
+
+      recorder.onstart = () => {
+        console.log("Audio recording started");
+        setIsRecordingAudio(true);
+      };
+
+      recorder.onstop = () => {
+        console.log("Audio recording stopped");
+        setIsRecordingAudio(false);
+      };
+
+      // Start recording with 5 second chunks
+      recorder.start(5000);
+      console.log("MediaRecorder started with 5s chunks");
+    } catch (error) {
+      console.error("Failed to start audio recording:", error);
+    }
+  }, [sendAudioToServer]);
+
+  // Stop audio recording
+  const stopAudioRecording = useCallback(() => {
+    if (
+      mediaRecorderRef.current &&
+      mediaRecorderRef.current.state !== "inactive"
+    ) {
+      mediaRecorderRef.current.stop();
+    }
+    if (audioStreamRef.current) {
+      audioStreamRef.current.getTracks().forEach((track) => track.stop());
+      audioStreamRef.current = null;
+    }
+    mediaRecorderRef.current = null;
+    setIsRecordingAudio(false);
+  }, []);
 
   // Handle incoming WebRTC signals
   const handleWebRTCSignal = useCallback(async (signal: any) => {
@@ -78,6 +187,7 @@ const HostView: React.FC = () => {
   const {
     participants: wsParticipants,
     isConnected,
+    roomId,
     sendWebRTCSignal,
     getClientId,
   } = useRoomWebSocket({
@@ -86,6 +196,14 @@ const HostView: React.FC = () => {
     isHost: true,
     onWebRTCSignal: handleWebRTCSignal,
   });
+
+  // Sync roomId to ref for audio uploads
+  useEffect(() => {
+    if (roomId) {
+      roomIdRef.current = roomId;
+      console.log("Room ID synced for audio uploads:", roomId);
+    }
+  }, [roomId]);
 
   // Map WebSocket participants to UI format
   const participants: Participant[] = wsParticipants.map((p, index) => ({
@@ -141,7 +259,10 @@ const HostView: React.FC = () => {
     videoRef.current.play().catch(console.error);
     setStage("live");
     console.log("Stream is now live");
-  }, [stage]);
+
+    // Start audio recording for transcription
+    startAudioRecording();
+  }, [stage, startAudioRecording]);
 
   // Flip camera
   const flipCamera = useCallback(async () => {
@@ -186,6 +307,9 @@ const HostView: React.FC = () => {
   // End stream
   const endStream = useCallback(() => {
     if (confirm("End stream and return to home?")) {
+      // Stop audio recording
+      stopAudioRecording();
+
       if (streamRef.current) {
         streamRef.current.getTracks().forEach((t) => t.stop());
         streamRef.current = null;
@@ -194,7 +318,7 @@ const HostView: React.FC = () => {
       peerConnectionsRef.current.clear();
       window.location.href = "/";
     }
-  }, []);
+  }, [stopAudioRecording]);
 
   // Create WebRTC peer connection for a participant
   const createPeerConnection = useCallback(
@@ -273,6 +397,17 @@ const HostView: React.FC = () => {
   // Cleanup on unmount
   useEffect(() => {
     return () => {
+      // Stop audio recording
+      if (
+        mediaRecorderRef.current &&
+        mediaRecorderRef.current.state !== "inactive"
+      ) {
+        mediaRecorderRef.current.stop();
+      }
+      if (audioStreamRef.current) {
+        audioStreamRef.current.getTracks().forEach((track) => track.stop());
+      }
+
       if (streamRef.current) {
         streamRef.current.getTracks().forEach((t) => t.stop());
       }
@@ -333,16 +468,29 @@ const HostView: React.FC = () => {
         </div>
 
         {stage === "live" && (
-          <motion.button
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => setShowHelp(true)}
-            className="w-10 h-10 rounded-full border border-selected flex items-center justify-center cursor-pointer bg-background/50 backdrop-blur-sm"
-          >
-            <HelpCircle className="w-5 h-5 text-primary" />
-          </motion.button>
+          <div className="flex items-center gap-2">
+            {/* Recording Indicator */}
+            {isRecordingAudio && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="flex items-center gap-2 px-3 py-2 rounded-full bg-red-500/20 border border-red-500/50 backdrop-blur-sm"
+              >
+                <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
+                <Mic className="w-4 h-4 text-red-500" />
+              </motion.div>
+            )}
+            <motion.button
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => setShowHelp(true)}
+              className="w-10 h-10 rounded-full border border-selected flex items-center justify-center cursor-pointer bg-background/50 backdrop-blur-sm"
+            >
+              <HelpCircle className="w-5 h-5 text-primary" />
+            </motion.button>
+          </div>
         )}
       </motion.div>
 
