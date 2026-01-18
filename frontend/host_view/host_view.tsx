@@ -68,39 +68,71 @@ const HostView: React.FC = () => {
     if (current) current.getTracks().forEach((t) => t.stop());
 
     const targetMode = mode || facingMode;
-    const constraintsExact: MediaStreamConstraints = {
-      video: { facingMode: { exact: targetMode } as any, width: { ideal: 1280 }, height: { ideal: 720 } },
-      audio: false,
-    };
-    const constraintsIdeal: MediaStreamConstraints = {
-      video: { facingMode: targetMode, width: { ideal: 1280 }, height: { ideal: 720 } },
-      audio: false,
-    };
+    
+    // Try multiple constraint strategies for better mobile compatibility
+    const constraintStrategies: MediaStreamConstraints[] = [
+      // Strategy 1: Exact facing mode with ideal resolution
+      {
+        video: {
+          facingMode: { exact: targetMode },
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        },
+        audio: false,
+      },
+      // Strategy 2: Ideal facing mode with ideal resolution
+      {
+        video: {
+          facingMode: targetMode,
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        },
+        audio: false,
+      },
+      // Strategy 3: Just facing mode (for mobile devices)
+      {
+        video: { facingMode: targetMode },
+        audio: false,
+      },
+      // Strategy 4: Basic video (fallback)
+      {
+        video: true,
+        audio: false,
+      },
+    ];
 
-    try {
-      let stream: MediaStream | null = null;
+    let stream: MediaStream | null = null;
+    let lastError: any = null;
+
+    for (const constraints of constraintStrategies) {
       try {
-        stream = await navigator.mediaDevices.getUserMedia(constraintsExact);
-      } catch {
-        stream = await navigator.mediaDevices.getUserMedia(constraintsIdeal);
+        stream = await navigator.mediaDevices.getUserMedia(constraints);
+        console.log("Stream started with constraints:", constraints);
+        break;
+      } catch (error) {
+        console.warn("Failed with constraints:", constraints, error);
+        lastError = error;
       }
+    }
 
-      stream.getVideoTracks().forEach((track) => {
-        track.onended = () => {
-          setIsStreaming(false);
-          attachStream(null);
-        };
-      });
-
-      attachStream(stream);
-      setIsStreaming(true);
-      console.log("Stream started with facing mode:", targetMode);
-    } catch (error) {
-      console.error("Failed to start stream:", error);
-      alert("Failed to access camera. Check permissions and try again.");
+    if (!stream) {
+      console.error("All camera strategies failed:", lastError);
+      alert("Failed to access camera. Please check permissions and ensure you're using HTTPS.");
       setIsStreaming(false);
       attachStream(null);
+      return;
     }
+
+    stream.getVideoTracks().forEach((track) => {
+      track.onended = () => {
+        setIsStreaming(false);
+        attachStream(null);
+      };
+    });
+
+    attachStream(stream);
+    setIsStreaming(true);
+    console.log("Stream started successfully with facing mode:", targetMode);
   }, [facingMode]);
 
   // Enhanced whiteboard detection with edge detection and contour analysis
@@ -288,7 +320,7 @@ const HostView: React.FC = () => {
 
   return (
     <div
-      className="h-screen w-full bg-background relative overflow-hidden font-sans"
+      className="h-screen w-full bg-background relative overflow-hidden font-sans touch-none"
       onClick={handleUserGesture}
       onTouchStart={handleUserGesture}
       style={
@@ -297,8 +329,13 @@ const HostView: React.FC = () => {
               backgroundImage:
                 "radial-gradient(circle, rgba(150, 150, 150, 0.15) 1.5px, transparent 1.5px)",
               backgroundSize: "24px 24px",
+              width: "100vw",
+              maxWidth: "100vw",
             }
-          : undefined
+          : {
+              width: "100vw",
+              maxWidth: "100vw",
+            }
       }
     >
       {/* Camera Stream */}
@@ -444,7 +481,10 @@ const HostView: React.FC = () => {
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 100, opacity: 0 }}
             transition={{ duration: 0.5 }}
-            className="absolute bottom-8 left-0 right-0 flex items-center justify-center gap-4 px-6 z-10"
+            className="absolute bottom-0 left-0 right-0 flex items-center justify-center gap-3 sm:gap-4 px-4 sm:px-6 pb-6 sm:pb-8 pt-4 z-10"
+            style={{
+              paddingBottom: "max(1.5rem, env(safe-area-inset-bottom))",
+            }}
           >
             {/* Participants Button with Avatars */}
             <motion.button
@@ -457,7 +497,7 @@ const HostView: React.FC = () => {
                 e.stopPropagation();
                 handleViewParticipants();
               }}
-              className="px-4 h-16 relative rounded-full border border-selected flex items-center justify-center shadow-xl cursor-pointer overflow-visible transition-transform backdrop-blur-sm"
+              className="px-3 sm:px-4 h-14 sm:h-16 relative rounded-full border border-selected flex items-center justify-center shadow-xl cursor-pointer overflow-visible transition-transform backdrop-blur-sm flex-shrink-0"
               aria-label="View Participants"
               style={{
                 backgroundColor: "rgba(30, 30, 30, 0.8)",
@@ -470,7 +510,7 @@ const HostView: React.FC = () => {
                 {participants.slice(0, 3).map((participant, idx) => (
                   <div
                     key={participant.id}
-                    className={`w-8 h-8 rounded-full ${participant.color} border-2 border-page flex items-center justify-center text-xs font-bold text-white shadow-sm`}
+                    className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full ${participant.color} border-2 border-page flex items-center justify-center text-xs font-bold text-white shadow-sm`}
                     style={{ zIndex: 3 - idx }}
                     title={participant.name}
                   >
@@ -492,7 +532,7 @@ const HostView: React.FC = () => {
                 e.stopPropagation();
                 handleEndStream();
               }}
-              className="w-20 h-20 relative rounded-full border border-selected flex items-center justify-center shadow-xl cursor-pointer overflow-hidden transition-transform backdrop-blur-sm"
+              className="w-16 h-16 sm:w-20 sm:h-20 relative rounded-full border border-selected flex items-center justify-center shadow-xl cursor-pointer overflow-hidden transition-transform backdrop-blur-sm flex-shrink-0"
               aria-label="End Stream"
               style={{
                 backgroundColor: "rgba(30, 30, 30, 0.8)",
@@ -501,7 +541,7 @@ const HostView: React.FC = () => {
                 backgroundSize: "24px 24px",
               }}
             >
-              <X className="w-7 h-7 text-primary" />
+              <X className="w-6 h-6 sm:w-7 sm:h-7 text-primary" />
               <span className="absolute inset-0 bg-white opacity-0 hover:opacity-5 transition-opacity rounded-full pointer-events-none" />
             </motion.button>
 
@@ -516,7 +556,7 @@ const HostView: React.FC = () => {
                 e.stopPropagation();
                 handleFlipCamera();
               }}
-              className="w-16 h-16 relative rounded-full border border-selected flex items-center justify-center shadow-xl cursor-pointer overflow-hidden transition-transform backdrop-blur-sm"
+              className="w-14 h-14 sm:w-16 sm:h-16 relative rounded-full border border-selected flex items-center justify-center shadow-xl cursor-pointer overflow-hidden transition-transform backdrop-blur-sm flex-shrink-0"
               aria-label="Flip Camera"
               style={{
                 backgroundColor: "rgba(30, 30, 30, 0.8)",
@@ -525,7 +565,7 @@ const HostView: React.FC = () => {
                 backgroundSize: "24px 24px",
               }}
             >
-              <SwitchCamera className="w-6 h-6 text-primary" />
+              <SwitchCamera className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
               <span className="absolute inset-0 bg-white opacity-0 hover:opacity-5 transition-opacity rounded-full pointer-events-none" />
             </motion.button>
           </motion.div>
