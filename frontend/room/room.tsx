@@ -264,7 +264,7 @@ const Controla: React.FC<{
   disabled?: boolean;
 }> = ({ icon, label, onClick, variant = "secondary", disabled = false }) => {
   const variantClasses = {
-    primary: "bg-primary text-background hover:opacity-80",
+    primary: "bg-blue-500 text-background hover:opacity-80",
     secondary: "bg-hover text-primary hover:opacity-80 border border-selected",
     danger: "bg-hover text-primary hover:border-red-500 border border-selected",
   };
@@ -314,19 +314,19 @@ const ControlPanel: React.FC<{
           }
           label={isRecording ? "Recording..." : "Start Recording"}
           onClick={onStartRecording}
-          variant={isRecording ? "danger" : "secondary"}
+          variant={isRecording ? "danger" : "primary"}
         />
         <Controla
           icon={<Layers className="w-4 h-4" />}
           label="Whiteboard"
           onClick={onOpenWhiteboard}
-          variant="secondary"
+          variant="primary"
         />
         <Controla
           icon={<LogOut className="w-4 h-4" />}
           label="End Session"
           onClick={onEndSession}
-          variant="danger"
+          variant="primary"
         />
       </div>
     </div>
@@ -431,7 +431,7 @@ const Sidebar: React.FC<{
         <div className="p-4 border-b border-selected space-y-2 shrink-0">
           <button
             onClick={onCreateSnippet}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-primary text-background rounded-lg font-semibold hover:opacity-80 transition-all cursor-pointer outline-none focus:outline-none focus:ring-0 focus-visible:outline-none"
+            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-500 text-background rounded-lg font-semibold hover:opacity-80 transition-all cursor-pointer outline-none focus:outline-none focus:ring-0 focus-visible:outline-none"
           >
             <Plus className="w-4 h-4" />
             <span className="text-sm">New Snippet</span>
