@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useCallback, useMemo } from "react";
+import React, { useState, useCallback } from "react";
 import {
   Share,
   Circle,
@@ -130,9 +130,9 @@ const Header: React.FC<{
               {roomCode}
             </code>
           </div>
-          <a
+          <button
             onClick={onCopyCode}
-            className="p-2 hover:bg-hover rounded-lg transition-colors cursor-pointer group"
+            className="p-2 hover:bg-hover bg-transparent! rounded-lg transition-colors cursor-pointer group outline-none focus:outline-none focus:ring-0 focus-visible:outline-none"
             aria-label="Copy room code"
           >
             {copied ? (
@@ -140,12 +140,12 @@ const Header: React.FC<{
             ) : (
               <Copy className="w-4 h-4 text-secondary group-hover:text-primary transition-colors" />
             )}
-          </a>
+          </button>
         </div>
         <div className="relative">
           <div
             onClick={onToggleParticipants}
-            className="flex items-center gap-3 px-5 py-2.5 bg-background rounded-lg border border-selected hover:border-gray-500 transform ease-in duration-100 cursor-pointer"
+            className="group flex items-center gap-3 px-5 py-2.5 bg-background rounded-lg border border-selected hover:border-gray-500 transform ease-in duration-100 cursor-pointer"
           >
             <ParticipantAvatars participants={participants} />
             <div className="flex flex-col items-end">
@@ -169,7 +169,7 @@ const Header: React.FC<{
                 {participants.map((participant) => (
                   <div
                     key={participant.id}
-                    className="flex items-center gap-3 p-2 hover:bg-hover rounded-lg transition-colors group"
+                    className="group flex items-center gap-3 p-2 hover:bg-hover rounded-lg transition-colors"
                   >
                     <div
                       className={`w-8 h-8 rounded-full ${participant.color} flex items-center justify-center text-xs font-bold text-white shadow-sm transition-all`}
@@ -181,16 +181,16 @@ const Header: React.FC<{
                         {participant.name}
                       </div>
                     </div>
-                    <a
+                    <button
                       onClick={(e) => {
                         e.stopPropagation();
                         onKickParticipant(participant.id);
                       }}
-                      className="p-1.5 hover:bg-red-500/20 border border-selected hover:border-red-500 rounded-md transition-all cursor-pointer opacity-0 group-hover:opacity-100"
+                      className="bg-transparent! p-1.5 border border-transparent hover:bg-red-500/20 hover:border-red-500 rounded-md transition-all cursor-pointer opacity-0 group-hover:opacity-100 outline-none focus:outline-none focus:ring-0 focus-visible:outline-none"
                       aria-label={`Kick ${participant.name}`}
                     >
-                      <Trash2 className="w-4 h-4 text-muted hover:text-red-500" />
-                    </a>
+                      <Trash2 className="w-4 h-4 text-muted group-hover:text-red-500" />
+                    </button>
                   </div>
                 ))}
               </div>
@@ -207,9 +207,9 @@ const Header: React.FC<{
           <code className="font-mono text-sm text-primary font-bold tracking-widest flex-1">
             {roomCode}
           </code>
-          <a
+          <button
             onClick={onCopyCode}
-            className="p-1.5 hover:bg-hover rounded transition-colors cursor-pointer"
+            className="p-1.5 hover:bg-hover rounded transition-colors cursor-pointer outline-none focus:outline-none focus:ring-0 focus-visible:outline-none"
             aria-label="Copy room code"
           >
             {copied ? (
@@ -217,7 +217,7 @@ const Header: React.FC<{
             ) : (
               <Copy className="w-4 h-4 text-secondary" />
             )}
-          </a>
+          </button>
         </div>
       </div>
     </div>
@@ -274,7 +274,7 @@ const Controla: React.FC<{
       disabled={disabled}
       className={`${variantClasses[variant]} ${
         disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
-      } px-4 py-3 rounded-lg font-semibold transition-all flex items-center justify-center gap-2`}
+      } px-4 py-3 rounded-lg font-semibold transition-all flex items-center justify-center gap-2 outline-none focus:outline-none focus:ring-0 focus-visible:outline-none`}
     >
       {icon}
       <span className="hidden sm:inline text-sm">{label}</span>
@@ -347,7 +347,10 @@ const SnippetCard: React.FC<{
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      <a onClick={onClick} className="w-full text-left cursor-pointer">
+      <button
+        onClick={onClick}
+        className="w-full text-left cursor-pointer outline-none focus:outline-none focus:ring-0 focus-visible:outline-none"
+      >
         <div className="aspect-video bg-page border border-selected rounded-lg flex items-center justify-center mb-2 overflow-hidden transition-colors">
           <div className="text-muted text-sm text-center px-2">
             {snippet.title}
@@ -362,18 +365,18 @@ const SnippetCard: React.FC<{
             minute: "2-digit",
           })}
         </div>
-      </a>
+      </button>
       {isHovered && (
-        <a
+        <button
           onClick={(e) => {
             e.stopPropagation();
             onDelete();
           }}
-          className="absolute top-2 right-2 p-1.5 bg-background/90 hover:bg-red-500/20 border border-selected hover:border-red-500 rounded-md transition-all cursor-pointer"
+          className="absolute top-2 right-2 p-1.5 hover:bg-red-500/20 border border-transparent hover:border-red-500 rounded-md transition-all cursor-pointer outline-none focus:outline-none focus:ring-0 focus-visible:outline-none"
           aria-label="Delete snippet"
         >
-          <Trash2 className="w-3 h-3 text-muted hover:text-red-500" />
-        </a>
+          <Trash2 className="w-3 h-3 text-muted group-hover:text-red-500" />
+        </button>
       )}
     </div>
   );
@@ -417,22 +420,22 @@ const Sidebar: React.FC<{
               <p className="text-xs text-muted">{snippets.length} saved</p>
             </div>
           </div>
-          <a
+          <button
             onClick={onClose}
-            className="p-2 hover:bg-hover rounded-lg transition-colors cursor-pointer"
+            className="p-2 hover:bg-hover rounded-lg transition-colors cursor-pointer outline-none focus:outline-none focus:ring-0 focus-visible:outline-none"
             aria-label="Close sidebar"
           >
             <X className="w-5 h-5 text-secondary" />
-          </a>
+          </button>
         </div>
         <div className="p-4 border-b border-selected space-y-2 shrink-0">
-          <a
+          <button
             onClick={onCreateSnippet}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-primary text-background rounded-lg font-semibold hover:opacity-80 transition-all cursor-pointer"
+            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-primary text-background rounded-lg font-semibold hover:opacity-80 transition-all cursor-pointer outline-none focus:outline-none focus:ring-0 focus-visible:outline-none"
           >
             <Plus className="w-4 h-4" />
             <span className="text-sm">New Snippet</span>
-          </a>
+          </button>
         </div>
         <div className="flex-1 overflow-y-auto p-4">
           {snippets.length > 0 ? (
@@ -468,15 +471,15 @@ const SidebarToggle: React.FC<{ onClick: () => void; isOpen: boolean }> = ({
   onClick,
   isOpen,
 }) => (
-  <a
+  <button
     onClick={onClick}
-    className={`fixed top-1/2 -translate-y-1/2 z-30 bg-page/90 backdrop-blur-sm hover:bg-hover text-primary px-3 py-6 rounded-l-lg shadow-xl border border-selected border-r-0 transition-all duration-300 group cursor-pointer ${
+    className={`fixed top-1/2 -translate-y-1/2 z-30 bg-page/90 backdrop-blur-sm hover:bg-hover text-primary px-3 py-6 rounded-l-lg shadow-xl border border-selected border-r-0 transition-all duration-300 group cursor-pointer outline-none focus:outline-none focus:ring-0 focus-visible:outline-none ${
       isOpen ? "right-80 lg:right-96 opacity-0 pointer-events-none" : "right-0"
     }`}
     aria-label="Toggle sidebar"
   >
     <ChevronLeft className="w-5 h-5 group-hover:scale-110 transition-transform" />
-  </a>
+  </button>
 );
 
 const Room: React.FC = () => {
