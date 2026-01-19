@@ -1,6 +1,7 @@
 "use client";
 
 import { Dispatch, SetStateAction, useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
 import CheckIcon from "@mui/icons-material/Check";
@@ -33,22 +34,62 @@ export default function DrawingToolbar({
   return (
     <div className="fixed bottom-4 sm:bottom-8 right-4 sm:right-8 z-20 flex flex-col gap-2">
       {/* Colors Dialog - Desktop: above, Mobile: horizontal to the left */}
-      {showColors && (
-        <>
-          {/* Desktop version - above */}
-          <div className="hidden sm:block absolute bottom-full right-0 mb-2 bg-page border border-selected rounded-lg p-4 shadow-md">
-            <p className="text-xs font-semibold text-muted uppercase tracking-wide mb-3">
-              Colors
-            </p>
-            <div className="grid grid-cols-3 gap-2">
-              {colors.map((color) => (
-                <button
+      <AnimatePresence>
+        {showColors && (
+          <>
+            {/* Desktop version - above */}
+            <motion.div
+              initial={{ opacity: 0, y: 10, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 10, scale: 0.95 }}
+              transition={{ duration: 0.2, ease: "easeOut" }}
+              className="hidden sm:block absolute bottom-full right-0 mb-2 bg-page border border-selected rounded-lg p-4 shadow-md"
+            >
+              <p className="text-xs font-semibold text-muted uppercase tracking-wide mb-3">
+                Colors
+              </p>
+              <div className="grid grid-cols-3 gap-2">
+                {colors.map((color, index) => (
+                  <motion.button
+                    key={color.name}
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.15, delay: index * 0.03 }}
+                    onClick={() => {
+                      setSelectedColor(color.value);
+                      setShowColors(false);
+                    }}
+                    className={`w-8 h-8 rounded-md border-2 transition-all ${
+                      selectedColor === color.value
+                        ? "border-primary scale-110"
+                        : "border-selected hover:border-primary"
+                    }`}
+                    style={{ backgroundColor: color.value }}
+                    title={color.name}
+                  />
+                ))}
+              </div>
+            </motion.div>
+
+            {/* Mobile version - horizontal row to the left */}
+            <motion.div
+              initial={{ opacity: 0, x: 20, scale: 0.95 }}
+              animate={{ opacity: 1, x: 0, scale: 1 }}
+              exit={{ opacity: 0, x: 20, scale: 0.95 }}
+              transition={{ duration: 0.2, ease: "easeOut" }}
+              className="sm:hidden absolute bottom-0 right-full mr-2 bg-page border border-selected rounded-lg px-2 py-1.5 shadow-md flex items-center gap-1.5"
+            >
+              {colors.map((color, index) => (
+                <motion.button
                   key={color.name}
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.15, delay: index * 0.03 }}
                   onClick={() => {
                     setSelectedColor(color.value);
                     setShowColors(false);
                   }}
-                  className={`w-8 h-8 rounded-md border-2 transition-all ${
+                  className={`w-6 h-6 rounded border-2 transition-all flex-shrink-0 ${
                     selectedColor === color.value
                       ? "border-primary scale-110"
                       : "border-selected hover:border-primary"
@@ -57,30 +98,10 @@ export default function DrawingToolbar({
                   title={color.name}
                 />
               ))}
-            </div>
-          </div>
-
-          {/* Mobile version - horizontal row to the left */}
-          <div className="sm:hidden absolute bottom-0 right-full mr-2 bg-page border border-selected rounded-lg px-3 py-2 shadow-md flex items-center gap-2">
-            {colors.map((color) => (
-              <button
-                key={color.name}
-                onClick={() => {
-                  setSelectedColor(color.value);
-                  setShowColors(false);
-                }}
-                className={`w-8 h-8 rounded-md border-2 transition-all flex-shrink-0 ${
-                  selectedColor === color.value
-                    ? "border-primary scale-110"
-                    : "border-selected hover:border-primary"
-                }`}
-                style={{ backgroundColor: color.value }}
-                title={color.name}
-              />
-            ))}
-          </div>
-        </>
-      )}
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
 
       {/* Toolbar Buttons */}
       <div className="flex gap-2">
