@@ -155,7 +155,7 @@ export default function Landing() {
         backgroundImage: `radial-gradient(circle, rgba(150, 150, 150, 0.15) 1.5px, transparent 1.5px)`,
       }}
     >
-      {/* Hint - hidden on mobile */}
+      {/* Hint - desktop */}
       <motion.div
         initial={{ opacity: 0, x: -20 }}
         animate={{ opacity: 1, x: 0 }}
@@ -165,6 +165,19 @@ export default function Landing() {
         <span className="text-yellow-400">★</span>
         <span className="text-[rgba(255,255,255,0.4)]">
           Hold left click to draw
+        </span>
+      </motion.div>
+
+      {/* Hint - mobile */}
+      <motion.div
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.2 }}
+        className="flex sm:hidden absolute top-3 left-1/2 -translate-x-1/2 items-center gap-2 bg-background/70 px-3 py-1 rounded-md text-xs text-primary shadow-md z-20"
+      >
+        <span className="text-yellow-400">★</span>
+        <span className="text-[rgba(255,255,255,0.4)]">
+          Touch and drag to draw
         </span>
       </motion.div>
 

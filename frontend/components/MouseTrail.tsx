@@ -56,10 +56,36 @@ export default function MouseTrail({
       posRef.current = { x: -1, y: -1 };
     };
 
+    // Touch event handlers for mobile
+    const handleTouchStart = (e: TouchEvent) => {
+      if (e.touches.length !== 1) return;
+      const touch = e.touches[0];
+      isDrawingRef.current = true;
+      posRef.current = { x: touch.clientX, y: touch.clientY };
+    };
+
+    const handleTouchMove = (e: TouchEvent) => {
+      if (!isDrawingRef.current || e.touches.length !== 1) return;
+      e.preventDefault(); // Prevent scrolling while drawing
+      const touch = e.touches[0];
+      drawLine(touch.clientX, touch.clientY);
+    };
+
+    const handleTouchEnd = () => {
+      stopDrawing();
+    };
+
+    // Mouse events
     window.addEventListener("mousedown", handleMouseDown);
     window.addEventListener("mousemove", handleMouseMove);
     window.addEventListener("mouseup", stopDrawing);
     window.addEventListener("mouseleave", stopDrawing);
+
+    // Touch events
+    canvas.addEventListener("touchstart", handleTouchStart, { passive: true });
+    canvas.addEventListener("touchmove", handleTouchMove, { passive: false });
+    canvas.addEventListener("touchend", handleTouchEnd);
+    canvas.addEventListener("touchcancel", handleTouchEnd);
 
     window.addEventListener("resize", () => {
       canvas.width = window.innerWidth;
@@ -72,6 +98,10 @@ export default function MouseTrail({
       window.removeEventListener("mousemove", handleMouseMove);
       window.removeEventListener("mouseup", stopDrawing);
       window.removeEventListener("mouseleave", stopDrawing);
+      canvas.removeEventListener("touchstart", handleTouchStart);
+      canvas.removeEventListener("touchmove", handleTouchMove);
+      canvas.removeEventListener("touchend", handleTouchEnd);
+      canvas.removeEventListener("touchcancel", handleTouchEnd);
     };
   }, []);
 
@@ -140,6 +170,6 @@ export default function MouseTrail({
   
 
   return (
-    <canvas ref={canvasRef} className="fixed inset-0 pointer-events-none z-0" />
+    <canvas ref={canvasRef} className="fixed inset-0 z-0 touch-none" style={{ pointerEvents: 'auto' }} />
   );
 }
