@@ -23,15 +23,29 @@ interface ScreenshotMessage {
   from: string;
 }
 
+interface HighlightMessage {
+  type: 'highlight' | 'highlight-created';
+  highlight?: Record<string, unknown>;
+  [key: string]: unknown;
+}
+
 interface UseRoomWebSocketProps {
   joinCode: string | null;
   participantName: string;
   isHost?: boolean;
   onWebRTCSignal?: (signal: WebRTCSignal) => void;
   onScreenshot?: (screenshot: ScreenshotMessage) => void;
+  onHighlight?: (highlight: HighlightMessage) => void;
 }
 
-export function useRoomWebSocket({ joinCode, participantName, isHost = false, onWebRTCSignal, onScreenshot }: UseRoomWebSocketProps) {
+export function useRoomWebSocket({
+  joinCode,
+  participantName,
+  isHost = false,
+  onWebRTCSignal,
+  onScreenshot,
+  onHighlight,
+}: UseRoomWebSocketProps) {
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [isConnected, setIsConnected] = useState(false);
   const [roomId, setRoomId] = useState<string | null>(null);
@@ -40,6 +54,7 @@ export function useRoomWebSocket({ joinCode, participantName, isHost = false, on
   const clientIdRef = useRef<string>(Math.random().toString(36).substring(7));
   const onWebRTCSignalRef = useRef(onWebRTCSignal);
   const onScreenshotRef = useRef(onScreenshot);
+  const onHighlightRef = useRef(onHighlight);
 
   // Keep callback refs updated
   useEffect(() => {
@@ -49,6 +64,10 @@ export function useRoomWebSocket({ joinCode, participantName, isHost = false, on
   useEffect(() => {
     onScreenshotRef.current = onScreenshot;
   }, [onScreenshot]);
+
+  useEffect(() => {
+    onHighlightRef.current = onHighlight;
+  }, [onHighlight]);
 
   // Get client ID
   const getClientId = useCallback(() => clientIdRef.current, []);
@@ -133,6 +152,13 @@ export function useRoomWebSocket({ joinCode, participantName, isHost = false, on
               // Forward screenshot to callback (only for non-hosts receiving from host)
               if (onScreenshotRef.current && msg.from !== clientIdRef.current) {
                 onScreenshotRef.current(msg as ScreenshotMessage);
+              }
+              break;
+
+            case 'highlight':
+            case 'highlight-created':
+              if (onHighlightRef.current) {
+                onHighlightRef.current(msg as HighlightMessage);
               }
               break;
 
