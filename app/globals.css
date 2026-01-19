@@ -12,41 +12,22 @@
 }
 
 /* =========================
-   Base Design Tokens
+   Base Design Tokens (Dark Mode Forced)
    ========================= */
 :root {
-  /* Light mode (kept minimal) */
-  --background: #ffffff;
-  --page: #ffffff;
+  /* Surfaces */
+  --background: #191919;
+  --page: #1f1f1f;
 
-  --text-primary: #171717;
-  --text-secondary: #555555;
+  /* Text */
+  --text-primary: #ededed;
+  --text-secondary: #b3b3b3;
   --text-muted: #7a7a7a;
 
-  --accent: #3b82f6;
-  --hover: #f2f2f2;
-  --selected: #eaeaea;
-}
-
-/* =========================
-   Dark Mode (Primary Mode)
-   ========================= */
-@media (prefers-color-scheme: dark) {
-  :root {
-    /* Surfaces */
-    --background: #191919;
-    --page: #1f1f1f;
-
-    /* Text */
-    --text-primary: #ededed;
-    --text-secondary: #b3b3b3;
-    --text-muted: #7a7a7a;
-
-    /* UI States */
-    --accent: #25519c;
-    --hover: #262626;
-    --selected: #2a2a2a;
-  }
+  /* UI States */
+  --accent: #25519c;
+  --hover: #262626;
+  --selected: #2a2a2a;
 }
 
 /* =========================

@@ -150,17 +150,17 @@ export default function Landing() {
 
   return (
     <div
-      className="landing min-h-screen bg-background text-primary font-sans flex flex-col items-center justify-center px-4 relative"
+      className="landing min-h-screen bg-background text-primary font-sans flex flex-col items-center justify-center px-4 sm:px-6 py-8 sm:py-4 relative overflow-x-hidden"
       style={{
         backgroundImage: `radial-gradient(circle, rgba(150, 150, 150, 0.15) 1.5px, transparent 1.5px)`,
       }}
     >
-      {/* Hint */}
+      {/* Hint - hidden on mobile */}
       <motion.div
         initial={{ opacity: 0, x: -20 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ duration: 0.5, delay: 0.2 }}
-        className="absolute top-4 left-4 flex items-center gap-2 bg-background/70 px-3 py-1 rounded-md text-xs text-primary shadow-md z-20"
+        className="hidden sm:flex absolute top-4 left-4 items-center gap-2 bg-background/70 px-3 py-1 rounded-md text-xs text-primary shadow-md z-20"
       >
         <span className="text-yellow-400">★</span>
         <span className="text-[rgba(255,255,255,0.4)]">
@@ -190,13 +190,13 @@ export default function Landing() {
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.1 }}
-          className="mb-12 text-center"
+          className="mb-8 sm:mb-12 text-center"
         >
           <motion.h1
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ duration: 0.7, delay: 0.2 }}
-            className="text-8xl font-bold text-primary mb-2"
+            className="text-5xl sm:text-6xl md:text-8xl font-bold text-primary mb-2"
           >
             Boardcast
           </motion.h1>
@@ -204,7 +204,7 @@ export default function Landing() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.5, delay: 0.4 }}
-            className="text-secondary"
+            className="text-secondary text-sm sm:text-base"
           >
             Stream your whiteboard in real time
           </motion.p>
@@ -215,7 +215,7 @@ export default function Landing() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.5, delay: 0.5 }}
-          className="space-y-6 mb-8"
+          className="space-y-4 sm:space-y-6 mb-6 sm:mb-8"
         >
           <motion.button
             whileHover={{ scale: 1.02 }}
@@ -238,10 +238,10 @@ export default function Landing() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.6 }}
-          className="bg-page rounded-xl border border-selected p-8"
+          className="bg-page rounded-xl border border-selected p-5 sm:p-8"
         >
           {/* Mode switch */}
-          <div className="flex gap-2 mb-8">
+          <div className="flex gap-2 mb-6 sm:mb-8">
             <motion.button
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
@@ -286,7 +286,7 @@ export default function Landing() {
           </div>
 
           {/* Form */}
-          <div className="space-y-4 mb-6">
+          <div className="space-y-3 sm:space-y-4 mb-5 sm:mb-6">
             <div>
               <label className="block text-xs font-semibold text-muted uppercase tracking-wide mb-2">
                 {mode === "join" ? "Username" : "Room Title"}
@@ -400,7 +400,7 @@ export default function Landing() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.5, delay: 0.8 }}
-          className="mt-8 text-center"
+          className="mt-6 sm:mt-8 text-center px-2"
         >
           <p className="text-xs text-muted leading-relaxed">
             Transform physical whiteboards into live, collaborative digital
